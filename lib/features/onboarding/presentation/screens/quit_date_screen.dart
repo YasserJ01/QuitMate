@@ -67,7 +67,8 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
       return;
     }
 
-    final success = await ref.read(onboardingProvider.notifier).completeOnboarding();
+    final success =
+        await ref.read(onboardingProvider.notifier).completeOnboarding();
 
     if (!mounted) return;
 
@@ -76,7 +77,7 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
         MaterialPageRoute(
           builder: (context) => const DashboardScreen(),
         ),
-            (route) => false,
+        (route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,8 +114,8 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
+              // crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title
                 Text(
@@ -125,8 +126,8 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                 Text(
                   AppStrings.quitDateSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
+                        color: AppTheme.textSecondary,
+                      ),
                 ),
                 const SizedBox(height: 32),
 
@@ -276,7 +277,8 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                   width: double.infinity,
                   child: GradientButton(
                     text: AppStrings.finish,
-                    onPressed: _selectedDate != null ? _completeOnboarding : null,
+                    onPressed:
+                        _selectedDate != null ? _completeOnboarding : null,
                     icon: Icons.check,
                     isLoading: onboardingState.isLoading,
                   ),
@@ -295,16 +297,36 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return months[month - 1];
   }
 
   String _formatDate(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }

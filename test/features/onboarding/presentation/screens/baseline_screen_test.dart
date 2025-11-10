@@ -114,7 +114,10 @@ void main() {
       await tester.enterText(field, '');
       await tester.pumpAndSettle();
 
-      // Try to submit
+      // Scroll to make button visible and tap it
+      await tester.ensureVisible(find.text(AppStrings.next));  // Add this
+      await tester.pumpAndSettle();                           // And this
+
       await tester.tap(find.text(AppStrings.next));
       await tester.pumpAndSettle();
 
@@ -135,6 +138,10 @@ void main() {
       // Try to submit
       await tester.tap(find.text(AppStrings.next));
       await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text(AppStrings.next));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.next));
 
       expect(find.textContaining('Enter a valid number'), findsOneWidget);
     });
@@ -276,6 +283,10 @@ void main() {
         createWidgetUnderTest(goalType: GoalType.quitSmoking),
       );
       await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text(AppStrings.next));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.next));
 
       // Enter invalid cost
       await tester.enterText(
