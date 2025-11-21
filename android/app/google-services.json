@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "373466115086",
+    "project_id": "quitmate-9752b",
+    "storage_bucket": "quitmate-9752b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373466115086:android:adbb65a704ae4f946aa05f",
+        "android_client_info": {
+          "package_name": "com.quitmate.quitmate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJoA4G8t3nttH4clylHdZZOhyL1Ed7UWQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

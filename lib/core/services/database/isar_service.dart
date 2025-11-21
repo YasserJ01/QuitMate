@@ -2,6 +2,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../features/craving_toolkit/data/models/toolkit_models.dart';
+import '../../../features/interventions/data/models/notification_models.dart';
 import '../../../features/onboarding/data/models/user_profile.dart';
 import '../../../features/tracking/data/models/craving_entry.dart';
 import '../../../features/tracking/data/models/log_entry.dart';
@@ -41,6 +42,9 @@ class IsarService {
         CbtSessionSchema,
         GroundingSessionSchema,
         DistractionSessionSchema,
+        ScheduledNotificationSchema,
+        NotificationPreferencesSchema,
+        NotificationHistorySchema,
       ],
       directory: dir.path,
       // encryptionKey: encryptionKey,
