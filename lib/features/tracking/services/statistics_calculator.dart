@@ -11,31 +11,34 @@ class StatisticsCalculator {
     required UserProfile profile,
     DateTime? startDate,
     DateTime? endDate,
+    DateTime? referenceDate, // For testing or specific point-in-time analysis
   }) {
+    final now = referenceDate ?? DateTime.now();
+
     // Filter logs by date range if specified
     final filteredLogs = _filterByDateRange(logs, startDate, endDate);
     final filteredCravings = _filterCravingsByDateRange(cravings, startDate, endDate);
 
     // Calculate streak data
-    final streakData = _calculateStreakData(filteredLogs, profile);
+    final streakData = _calculateStreakData(filteredLogs, profile, now);
 
     // Calculate counts
     final counts = _calculateCounts(filteredLogs, filteredCravings);
 
     // Calculate money saved (smoking only)
-    final moneySaved = _calculateMoneySaved(filteredLogs, profile);
+    final moneySaved = _calculateMoneySaved(filteredLogs, profile, now);
 
     // Calculate time metrics
-    final timeMetrics = _calculateTimeMetrics(filteredLogs, profile);
+    final timeMetrics = _calculateTimeMetrics(filteredLogs, profile, now);
 
     // Calculate trend data
     final trendData = _calculateTrendData(filteredLogs);
 
     // Calculate success rates
-    final successRates = _calculateSuccessRates(filteredCravings);
+    final successRates = _calculateSuccessRates(filteredCravings, now);
 
     // Calculate health metrics
-    final healthMetrics = _calculateHealthMetrics(filteredLogs, profile);
+    final healthMetrics = _calculateHealthMetrics(filteredLogs, profile, now);
 
     return Statistics(
       currentStreak: streakData['currentStreak']!,
@@ -67,8 +70,9 @@ class StatisticsCalculator {
   static Map<String, dynamic> _calculateStreakData(
       List<LogEntry> logs,
       UserProfile profile,
+      DateTime now,
       ) {
-    if (logs.isEmpty || profile.quitDate == null) {
+    if (profile.quitDate == null) {
       return {
         'currentStreak': 0,
         'longestStreak': 0,
@@ -77,42 +81,11 @@ class StatisticsCalculator {
       };
     }
 
-    final now = DateTime.now();
     final quitDate = profile.quitDate!;
 
     // Sort logs by date (oldest first)
     final sortedLogs = List<LogEntry>.from(logs)
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-    // Calculate current streak (days without relapse/slip)
-    int currentStreak = 0;
-    DateTime? streakStartDate;
-    DateTime? lastRelapseDate;
-
-    // Find the most recent relapse
-    for (var i = sortedLogs.length - 1; i >= 0; i--) {
-      final log = sortedLogs[i];
-      if (_isRelapse(log, profile)) {
-        lastRelapseDate = log.timestamp;
-        break;
-      }
-    }
-
-    // Calculate current streak
-    if (lastRelapseDate == null) {
-      // No relapses since quit date
-      currentStreak = now.difference(quitDate).inDays;
-      streakStartDate = quitDate;
-    } else if (lastRelapseDate.isBefore(now)) {
-      // Days since last relapse
-      currentStreak = now.difference(lastRelapseDate).inDays;
-      streakStartDate = lastRelapseDate;
-    }
-
-    // Calculate longest streak
-    int longestStreak = currentStreak;
-    int tempStreak = 0;
-    DateTime? tempStartDate = quitDate;
 
     // Group logs by day
     final logsByDay = <DateTime, List<LogEntry>>{};
@@ -126,48 +99,73 @@ class StatisticsCalculator {
     }
 
     // Calculate streaks day by day
+    // Start from the quit date (normalized to start of day)
     DateTime checkDate = DateTime(quitDate.year, quitDate.month, quitDate.day);
     final today = DateTime(now.year, now.month, now.day);
 
+    int currentStreak = 0;
+    int longestStreak = 0;
+    int tempStreak = 0;
+    DateTime? tempStartDate = quitDate;
+    DateTime? currentStreakStartDate = quitDate;
+
+    // Iterate from quit date to today (inclusive)
     while (checkDate.isBefore(today) || checkDate.isAtSameMomentAs(today)) {
       final dayLogs = logsByDay[checkDate] ?? [];
       final hadRelapse = dayLogs.any((log) => _isRelapse(log, profile));
 
       if (hadRelapse) {
+        // Check if the streak that just ended was the longest
         if (tempStreak > longestStreak) {
           longestStreak = tempStreak;
         }
+        // Reset streak
         tempStreak = 0;
+        // Next potential streak starts tomorrow
         tempStartDate = checkDate.add(const Duration(days: 1));
       } else {
+        // Clean day
         tempStreak++;
+        // If this is the start of a new streak, mark it
+        if (tempStreak == 1) {
+          currentStreakStartDate = tempStartDate;
+        }
       }
 
       checkDate = checkDate.add(const Duration(days: 1));
     }
 
-    // Check if temp streak is the longest
-    if (tempStreak > longestStreak) {
-      longestStreak = tempStreak;
+    // The streak at the end of the loop is the current streak
+    currentStreak = tempStreak;
+    
+    // Check if current streak is the longest
+    if (currentStreak > longestStreak) {
+      longestStreak = currentStreak;
+    }
+
+    // If current streak is 0 (relapsed today), the start date is irrelevant or should be tomorrow
+    // But for UI consistency, we can leave it as the last calculated start date or null
+    if (currentStreak == 0) {
+      currentStreakStartDate = null; 
     }
 
     return {
       'currentStreak': currentStreak,
       'longestStreak': longestStreak,
       'lastLogDate': sortedLogs.isNotEmpty ? sortedLogs.last.timestamp : null,
-      'streakStartDate': streakStartDate,
+      'streakStartDate': currentStreakStartDate,
     };
   }
 
   static bool _isRelapse(LogEntry log, UserProfile profile) {
     // For smoking: any cigarette is a relapse
-    if (profile.goalType.name.contains('smoking') &&
+    if (profile.goalType.name.toLowerCase().contains('smoking') &&
         log.type == LogType.cigarette) {
       return true;
     }
 
     // For masturbation: episodes are relapses
-    if (profile.goalType.name.contains('masturbation') &&
+    if (profile.goalType.name.toLowerCase().contains('masturbation') &&
         log.type == LogType.episode) {
       return true;
     }
@@ -230,12 +228,12 @@ class StatisticsCalculator {
   static Map<String, double> _calculateMoneySaved(
       List<LogEntry> logs,
       UserProfile profile,
+      DateTime now,
       ) {
     if (profile.quitDate == null || profile.dailySmokingCost == null) {
       return {'saved': 0.0, 'potential': 0.0};
     }
 
-    final now = DateTime.now();
     final daysSinceQuit = now.difference(profile.quitDate!).inDays;
 
     // Potential money if user had continued smoking at baseline rate
@@ -264,6 +262,7 @@ class StatisticsCalculator {
   static Map<String, dynamic> _calculateTimeMetrics(
       List<LogEntry> logs,
       UserProfile profile,
+      DateTime now,
       ) {
     if (profile.quitDate == null) {
       return {
@@ -273,35 +272,50 @@ class StatisticsCalculator {
       };
     }
 
-    final now = DateTime.now();
-    // Ensure the quitDate is not in the future for calculation
-    final startDate = profile.quitDate!.isAfter(now) ? now : profile.quitDate!;
-    final daysTracking = now.difference(startDate).inDays;
+    final quitDate = profile.quitDate!;
+    
+    // Normalize dates to start of day
+    final startDate = DateTime(quitDate.year, quitDate.month, quitDate.day);
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // Days tracking is inclusive of today (e.g. Day 1)
+    // If quitDate is today, difference is 0, so add 1.
+    final daysTracking = today.difference(startDate).inDays + 1;
 
-    // Calculate days clean (no relapses)
-    final relapses = logs.where((log) => _isRelapse(log, profile)).toList();
+    // Calculate days clean (Total Cumulative)
+    // Iterate from start date to today and count days without relapses
     int daysClean = 0;
-
-    if (relapses.isEmpty) {
-      daysClean = daysTracking;
-    } else {
-      final lastRelapse = relapses.last.timestamp;
-      // Prevent negative days if last relapse is in the future (data integrity check)
-      if (lastRelapse.isBefore(now)) {
-        daysClean = now.difference(lastRelapse).inDays;
+    
+    // Group logs by day for efficient lookup
+    final logsByDay = <DateTime, List<LogEntry>>{};
+    for (final log in logs) {
+      if (_isRelapse(log, profile)) {
+        final day = DateTime(
+          log.timestamp.year,
+          log.timestamp.month,
+          log.timestamp.day,
+        );
+        logsByDay.putIfAbsent(day, () => []).add(log);
       }
     }
+    
+    DateTime checkDate = startDate;
+    while (checkDate.isBefore(today) || checkDate.isAtSameMomentAs(today)) {
+      // If no relapse logs for this day, it's a clean day
+      if (!logsByDay.containsKey(checkDate)) {
+        daysClean++;
+      }
+      checkDate = checkDate.add(const Duration(days: 1));
+    }
 
-    // Calculate average logs per day
+    // Calculate average relapses per day
     double averagePerDay = 0.0;
     if (daysTracking > 0) {
-      // Count actual relapse events (cigarettes or episodes)
-      final relapseCount = logs.where((log) => _isRelapse(log, profile)).length;
-      averagePerDay = relapseCount / daysTracking;
+      final totalRelapses = logs.where((log) => _isRelapse(log, profile)).length;
+      averagePerDay = totalRelapses / daysTracking;
     }
 
     return {
-      // Clamp the final values to ensure they are never negative
       'daysTracking': daysTracking.clamp(0, double.infinity).toInt(),
       'daysClean': daysClean.clamp(0, double.infinity).toInt(),
       'averagePerDay': averagePerDay,
@@ -350,6 +364,7 @@ class StatisticsCalculator {
 
   static Map<String, double> _calculateSuccessRates(
       List<CravingEntry> cravings,
+      DateTime now,
       ) {
     if (cravings.isEmpty) {
       return {
@@ -365,7 +380,6 @@ class StatisticsCalculator {
     final resistanceRate = (resistedCount / cravings.length) * 100;
 
     // Calculate weekly improvement
-    final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
     final twoWeeksAgo = now.subtract(const Duration(days: 14));
 
@@ -403,6 +417,7 @@ class StatisticsCalculator {
   static Map<String, dynamic> _calculateHealthMetrics(
       List<LogEntry> logs,
       UserProfile profile,
+      DateTime now,
       ) {
     if (profile.quitDate == null || profile.cigarettesPerDay == null) {
       return {
@@ -411,7 +426,6 @@ class StatisticsCalculator {
       };
     }
 
-    final now = DateTime.now();
     final daysSinceQuit = now.difference(profile.quitDate!).inDays;
 
     // Calculate potential cigarettes if user had continued
@@ -641,17 +655,14 @@ class StatisticsCalculator {
   /// Calculate progress towards goal
   static double calculateProgressPercentage(
       UserProfile profile,
-      Statistics stats,
-      ) {
+      Statistics stats, {
+        DateTime? now,
+      }) {
     if (profile.quitDate == null) return 0.0;
 
-    final now = DateTime.now();
-    final daysSinceQuit = now.difference(profile.quitDate!).inDays;
-
-    // Different milestones based on goal type
+    final checkDate = now ?? DateTime.now();
     final milestones = [7, 14, 30, 60, 90, 180, 365]; // days
 
-    // Find current milestone
     int currentMilestone = 0;
     for (final milestone in milestones) {
       if (stats.currentStreak >= milestone) {

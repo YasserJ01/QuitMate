@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
+import '../../../relapse_prevention/presentation/screens/relapse_plan_screen.dart';
+import '../../../relapse_prevention/presentation/widgets/panic_button.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 import '../../data/models/log_entry.dart';
 import '../providers/statistics_provider.dart';
@@ -66,7 +68,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
           ),
-          // Add this button to the AppBar actions (before settings icon):
           IconButton(
             icon: const Icon(Icons.self_improvement),
             tooltip: 'Craving Toolkit',
@@ -75,6 +76,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const CravingToolkitScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.shield),
+            tooltip: 'Relapse Plan',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RelapsePlanScreen(),
                 ),
               );
             },
@@ -170,7 +183,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Text('Error: $error'),
         ),
       ),
-      floatingActionButton: const QuickLogButton(),
+      floatingActionButton: Stack(
+        children: [
+          Positioned(
+            bottom: 80, // Position QuickLogButton above PanicButton
+            right: 16,
+            child: const QuickLogButton(),
+          ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: const PanicButton(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -282,9 +308,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     subtitle: Text(log.formattedTime),
                     trailing: log.mood != null
                         ? Text(
-                      log.mood!.emoji,
-                      style: const TextStyle(fontSize: 24),
-                    )
+                            log.mood!.emoji,
+                            style: const TextStyle(fontSize: 20),
+                          )
                         : null,
                   );
                 },
@@ -308,7 +334,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Future<String> _getProfileName() async {
+  Future<String?> _getProfileName() async {
     final userId = await ref.read(currentUserIdProvider.future);
     if (userId == null) return 'there';
 

@@ -6,6 +6,7 @@ import '../../../features/interventions/data/models/notification_models.dart';
 import '../../../features/onboarding/data/models/user_profile.dart';
 import '../../../features/tracking/data/models/craving_entry.dart';
 import '../../../features/tracking/data/models/log_entry.dart';
+import '../../../features/relapse_prevention/data/models/relapse_models.dart';
 
 
 class IsarService {
@@ -45,6 +46,8 @@ class IsarService {
         ScheduledNotificationSchema,
         NotificationPreferencesSchema,
         NotificationHistorySchema,
+        RelapseContactSchema,
+        RelapsePlanSchema,
       ],
       directory: dir.path,
       // encryptionKey: encryptionKey,

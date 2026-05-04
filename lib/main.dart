@@ -9,7 +9,7 @@ import 'package:quitmate/features/interventions/services/push_notification_servi
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(); 
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([

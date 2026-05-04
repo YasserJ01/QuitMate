@@ -9,6 +9,7 @@ class QuickLogButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return FloatingActionButton.extended(
+      heroTag: 'quick_log_button',
       onPressed: () {
         _showQuickLogSheet(context, ref);
       },
