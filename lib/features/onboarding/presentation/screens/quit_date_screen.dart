@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../../core/constants/app_constants.dart';
-import '../../../../../core/theme/app_theme.dart';
-import '../../../../../core/widgets/common_widgets.dart';
+import 'package:quitmate/core/constants/app_constants.dart';
+import 'package:quitmate/core/theme/app_theme.dart';
+import 'package:quitmate/core/widgets/common_widgets.dart';
 import '../providers/onboarding_provider.dart';
 import '../../../tracking/presentation/screens/dashboard_screen.dart';
 
@@ -189,7 +189,7 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                               ],
                             ),
                           ),
-                          Icon(
+                          const Icon(
                             Icons.check_circle,
                             color: AppTheme.successColor,
                             size: 32,

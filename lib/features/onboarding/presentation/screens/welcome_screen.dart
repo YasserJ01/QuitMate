@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../../core/constants/app_constants.dart';
-import '../../../../../core/theme/app_theme.dart';
-import '../../../../../core/widgets/common_widgets.dart';
+import 'package:quitmate/core/constants/app_constants.dart';
+import 'package:quitmate/core/theme/app_theme.dart';
 import 'goal_selection_screen.dart';
 
 class WelcomeScreen extends ConsumerWidget {

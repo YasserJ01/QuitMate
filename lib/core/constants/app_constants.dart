@@ -13,6 +13,7 @@ class AppConstants {
   static const int maxNicknameLength = 20;
   static const int maxCigarettesPerDay = 100;
   static const int maxEpisodesPerWeek = 50;
+  static const int maxEmergencyContacts = 10;
 
   // Durations
   static const Duration splashDuration = Duration(seconds: 2);
@@ -50,4 +51,20 @@ class AppStrings {
   static const String finish = 'Finish';
   static const String cancel = 'Cancel';
   static const String save = 'Save';
+
+  // Relapse Prevention
+  static const String relapsePlanTitle = 'Relapse Prevention Plan';
+  static const String panicModeTitle = 'Panic Mode';
+  static const String panicModeSubtitle = 'Quick help when you need it most';
+  static const String emergencyContactsTitle = 'Emergency Contacts';
+  static const String customStepsTitle = 'My Relapse Plan';
+  static const String panicStepsTitle = 'Panic Mode Steps';
+  static const String addContact = 'Add Contact';
+  static const String editContact = 'Edit Contact';
+  static const String deleteContact = 'Delete Contact';
+  static const String callContact = 'Call';
+  static const String noContacts = 'No emergency contacts yet';
+  static const String noContactsSubtitle = 'Add people who can support you';
+  static const String panicButtonLabel = 'PANIC MODE';
+  static const String exitPanicMode = 'Exit Panic Mode';
 }
