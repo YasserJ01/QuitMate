@@ -87,7 +87,8 @@ class BreathingExerciseState {
 
   double get progress {
     if (targetDuration == 0) return 0;
-    return elapsedSeconds / targetDuration;
+    final value = elapsedSeconds / targetDuration;
+    return value.clamp(0.0, 1.0).toDouble();
   }
 }
 
@@ -108,20 +109,31 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
       );
 
   void setDuration(int seconds) {
-    state = state.copyWith(targetDuration: seconds);
+    state = state.copyWith(targetDuration: _alignDuration(seconds));
+  }
+
+  int _alignDuration(int seconds) {
+    final cycleSeconds = state.pattern.totalCycleSeconds;
+    if (cycleSeconds <= 0) {
+      return seconds;
+    }
+
+    final remainder = seconds % cycleSeconds;
+    return remainder == 0 ? seconds : seconds + (cycleSeconds - remainder);
   }
 
   Future<void> start() async {
     if (state.isRunning) return;
 
+    final alignedDuration = _alignDuration(state.targetDuration);
+
     // Create session - INITIALIZE ALL LATE FIELDS
     final session = BreathingSession()
       ..userId = _userId
       ..pattern = state.pattern
-      ..durationSeconds = state.targetDuration
-      ..cyclesCompleted =
-          0 // ADD THIS - initialize the late field
-      ..startTime = DateTime.now(); // ADD THIS - initialize the late field
+      ..durationSeconds = alignedDuration
+      ..cyclesCompleted = 0
+      ..startTime = DateTime.now();
 
     final savedSession = await _repository.addBreathingSession(session);
 
@@ -132,6 +144,7 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
       currentCycle: 0,
       currentPhase: 'inhale',
       phaseSecondsRemaining: state.pattern.inhaleSeconds,
+      targetDuration: alignedDuration,
     );
 
     _startTimer();
@@ -150,33 +163,54 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
     if (state.session == null) return;
 
     final session = state.session!;
-    session.endTime = DateTime.now();
-    session.cyclesCompleted = state.currentCycle;
+    if (session.endTime == null) {
+      session.endTime = DateTime.now();
+      session.cyclesCompleted = state.currentCycle;
+    }
     session.effectivenessRating = effectivenessRating;
 
     await _repository.updateBreathingSession(session);
 
-    state = state.copyWith(isRunning: false, isCompleted: true);
+    state = state.copyWith(isRunning: false, isCompleted: true, session: session);
   }
 
   void _startTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () async {
       if (!state.isRunning || mounted == false) return;
 
       final newElapsed = state.elapsedSeconds + 1;
       final newPhaseSeconds = state.phaseSecondsRemaining - 1;
-
-      if (newElapsed >= state.targetDuration) {
-        // Exercise complete
-        state = state.copyWith(
-          elapsedSeconds: newElapsed,
-          isRunning: false,
-          isCompleted: true,
-        );
-        return;
-      }
+      final targetReached = newElapsed >= state.targetDuration;
 
       if (newPhaseSeconds <= 0) {
+        if (targetReached) {
+          var completedCycles = state.currentCycle;
+          final endsCycle = state.currentPhase == 'pause' ||
+              (state.currentPhase == 'exhale' &&
+                  state.pattern.pauseSeconds == 0);
+          if (endsCycle) {
+            completedCycles += 1;
+          }
+
+          BreathingSession? updatedSession = state.session;
+          if (updatedSession != null) {
+            updatedSession.endTime = DateTime.now();
+            updatedSession.cyclesCompleted = completedCycles;
+            await _repository.updateBreathingSession(updatedSession);
+          }
+
+          // Exercise complete at end of current phase
+          state = state.copyWith(
+            elapsedSeconds: newElapsed,
+            phaseSecondsRemaining: 0,
+            currentCycle: completedCycles,
+            isRunning: false,
+            isCompleted: true,
+            session: updatedSession,
+          );
+          return;
+        }
+
         // Move to next phase
         final nextPhaseData = _getNextPhase();
         state = state.copyWith(

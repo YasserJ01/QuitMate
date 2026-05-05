@@ -21,13 +21,13 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
   int _scanDuration = 10; // seconds per body part
 
   final List<Map<String, dynamic>> _bodyParts = [
-    {'name': 'Feet & Toes', 'icon': '🦶', 'position': 0.9},
-    {'name': 'Legs & Knees', 'icon': '🦵', 'position': 0.7},
-    {'name': 'Hips & Lower Back', 'icon': '🫁', 'position': 0.55},
-    {'name': 'Stomach & Chest', 'icon': '💚', 'position': 0.45},
-    {'name': 'Shoulders & Neck', 'icon': '💪', 'position': 0.3},
-    {'name': 'Arms & Hands', 'icon': '👐', 'position': 0.35},
-    {'name': 'Face & Head', 'icon': '🧠', 'position': 0.1},
+    {'name': 'Feet & Toes', 'icon': '🦶', 'position': 0.92},
+    {'name': 'Legs & Knees', 'icon': '🦵', 'position': 0.75},
+    {'name': 'Hips & Lower Back', 'icon': '🦴', 'position': 0.6},
+    {'name': 'Stomach & Chest', 'icon': '💚', 'position': 0.48},
+    {'name': 'Arms & Hands', 'icon': '👐', 'position': 0.34},
+    {'name': 'Shoulders & Neck', 'icon': '💪', 'position': 0.26},
+    {'name': 'Face & Head', 'icon': '🧠', 'position': 0.12},
   ];
 
   @override
@@ -81,133 +81,146 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
     final currentPart = _bodyParts[_currentBodyPart];
 
     return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-        // Progress
-        Text(
-        'Part ${_currentBodyPart + 1} of ${_bodyParts.length}',
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: (_currentBodyPart + 1) / _bodyParts.length,
-          backgroundColor: Colors.grey.shade300,
-          valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.warningColor),
-        ),
-        const SizedBox(height: 32),
-
-        // Body visualization
-        Expanded(
-            child: Stack(
-                alignment: Alignment.center,
-                children: [
-                // Body outline
-                CustomPaint(
-                size: Size(200, MediaQuery.of(context).size.height * 0.5),
-            painter: BodyOutlinePainter(highlightPosition: currentPart['position'],
-            ),
-                ),
-
-                  // Current body part indicator
-                  Positioned(
-                    top: MediaQuery.of(context).size.height * 0.5 * currentPart['position'],
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.warningColor.withOpacity(0.3),
-                            blurRadius: 20,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            currentPart['icon'],
-                            style: const TextStyle(fontSize: 24),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            currentPart['name'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-            ),
-        ),
-
-            const SizedBox(height: 24),
-
-            // Timer
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.warningColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '$_scanDuration',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.warningColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Focus on this area...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Instructions
-            _buildInstructions(currentPart['name']),
-            const SizedBox(height: 24),
-
-            // Skip button
-            OutlinedButton(
-              onPressed: _nextBodyPart,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-              ),
-              child: const Text('Skip to Next Part'),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-    );
-  }
-
-  Widget _buildIntroScreen() {
-    return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          const Spacer(),
+          // Progress
+          Text(
+            'Part ${_currentBodyPart + 1} of ${_bodyParts.length}',
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: (_currentBodyPart + 1) / _bodyParts.length,
+            backgroundColor: Colors.grey.shade300,
+            valueColor:
+            const AlwaysStoppedAnimation<Color>(AppTheme.warningColor),
+          ),
+          const SizedBox(height: 32),
+
+          // Body visualization
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableHeight = constraints.maxHeight;
+                final availableWidth = constraints.maxWidth;
+                final bodyHeight = availableHeight * 0.9;
+                final bodyWidth = availableWidth * 0.55;
+                final markerTop = (bodyHeight * currentPart['position']) - 24;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: bodyHeight,
+                      width: bodyWidth,
+                      child: CustomPaint(
+                        painter: BodyOutlinePainter(
+                          highlightPosition: currentPart['position'],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: markerTop
+                          .clamp(0.0, bodyHeight - 48)
+                          .toDouble(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.warningColor,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.warningColor.withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              currentPart['icon'],
+                              style: const TextStyle(fontSize: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              currentPart['name'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Timer
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.warningColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '$_scanDuration',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.warningColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Focus on this area...',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Instructions
+          _buildInstructions(currentPart['name']),
+          const SizedBox(height: 24),
+
+          // Skip button
+          OutlinedButton(
+            onPressed: _nextBodyPart,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: const Text('Skip to Next Part'),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // FIX: Replaced Spacer() with SizedBox inside SingleChildScrollView to prevent overflow
+  Widget _buildIntroScreen() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 32),
 
           const Icon(
             Icons.self_improvement,
@@ -219,6 +232,7 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
           Text(
             'Body Scan Meditation',
             style: Theme.of(context).textTheme.headlineMedium,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
@@ -230,24 +244,20 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
           const SizedBox(height: 32),
 
           _buildInstructionCard(),
+          const SizedBox(height: 40),
 
-          const Spacer(),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _startScan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.warningColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'Begin Body Scan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
+          ElevatedButton(
+            onPressed: _startScan,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.warningColor,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text(
+              'Begin Body Scan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -262,16 +272,16 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
           children: [
             const Text(
               'How to Practice:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             const SizedBox(height: 12),
-            _buildInstructionItem('Notice sensations without trying to change them'),
+            _buildInstructionItem(
+                'Notice sensations without trying to change them'),
             _buildInstructionItem('Breathe naturally and stay relaxed'),
-            _buildInstructionItem('If your mind wanders, gently bring it back'),
-            _buildInstructionItem('There\'s no right or wrong way to feel'),
+            _buildInstructionItem(
+                'If your mind wanders, gently bring it back'),
+            _buildInstructionItem(
+                'There\'s no right or wrong way to feel'),
           ],
         ),
       ),
@@ -284,11 +294,7 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.circle,
-            size: 8,
-            color: AppTheme.warningColor,
-          ),
+          const Icon(Icons.circle, size: 8, color: AppTheme.warningColor),
           const SizedBox(width: 12),
           Expanded(child: Text(text)),
         ],
@@ -312,22 +318,19 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
               SizedBox(width: 8),
               Text(
                 'Notice:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          ...(_getBodyPartInstructions(bodyPart).map((instruction) =>
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '• $instruction',
-                  style: const TextStyle(fontSize: 13),
-                ),
-              )
+          ...(_getBodyPartInstructions(bodyPart).map(
+                (instruction) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '• $instruction',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
           )),
         ],
       ),
@@ -396,51 +399,45 @@ class BodyOutlinePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    final highlightPaint = Paint()
-      ..color = AppTheme.warningColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
     final centerX = size.width / 2;
 
-    // Draw body outline
     final path = Path();
 
     // Head
     path.addOval(Rect.fromCircle(
       center: Offset(centerX, size.height * 0.1),
-      radius: 30,
+      radius: size.width * 0.18,
     ));
 
     // Neck
-    path.moveTo(centerX - 15, size.height * 0.13);
-    path.lineTo(centerX - 15, size.height * 0.2);
-    path.moveTo(centerX + 15, size.height * 0.13);
-    path.lineTo(centerX + 15, size.height * 0.2);
+    path.moveTo(centerX - size.width * 0.08, size.height * 0.16);
+    path.lineTo(centerX - size.width * 0.08, size.height * 0.24);
+    path.moveTo(centerX + size.width * 0.08, size.height * 0.16);
+    path.lineTo(centerX + size.width * 0.08, size.height * 0.24);
 
     // Shoulders
-    path.moveTo(centerX - 15, size.height * 0.2);
-    path.lineTo(centerX - 50, size.height * 0.25);
-    path.moveTo(centerX + 15, size.height * 0.2);
-    path.lineTo(centerX + 50, size.height * 0.25);
+    path.moveTo(centerX - size.width * 0.08, size.height * 0.24);
+    path.lineTo(centerX - size.width * 0.3, size.height * 0.3);
+    path.moveTo(centerX + size.width * 0.08, size.height * 0.24);
+    path.lineTo(centerX + size.width * 0.3, size.height * 0.3);
 
     // Arms
-    path.moveTo(centerX - 50, size.height * 0.25);
-    path.lineTo(centerX - 60, size.height * 0.5);
-    path.moveTo(centerX + 50, size.height * 0.25);
-    path.lineTo(centerX + 60, size.height * 0.5);
+    path.moveTo(centerX - size.width * 0.3, size.height * 0.3);
+    path.lineTo(centerX - size.width * 0.35, size.height * 0.6);
+    path.moveTo(centerX + size.width * 0.3, size.height * 0.3);
+    path.lineTo(centerX + size.width * 0.35, size.height * 0.6);
 
     // Torso
-    path.moveTo(centerX - 15, size.height * 0.2);
-    path.lineTo(centerX - 25, size.height * 0.6);
-    path.moveTo(centerX + 15, size.height * 0.2);
-    path.lineTo(centerX + 25, size.height * 0.6);
+    path.moveTo(centerX - size.width * 0.12, size.height * 0.24);
+    path.lineTo(centerX - size.width * 0.18, size.height * 0.62);
+    path.moveTo(centerX + size.width * 0.12, size.height * 0.24);
+    path.lineTo(centerX + size.width * 0.18, size.height * 0.62);
 
     // Legs
-    path.moveTo(centerX - 25, size.height * 0.6);
-    path.lineTo(centerX - 20, size.height * 0.95);
-    path.moveTo(centerX + 25, size.height * 0.6);
-    path.lineTo(centerX + 20, size.height * 0.95);
+    path.moveTo(centerX - size.width * 0.18, size.height * 0.62);
+    path.lineTo(centerX - size.width * 0.14, size.height * 0.98);
+    path.moveTo(centerX + size.width * 0.18, size.height * 0.62);
+    path.lineTo(centerX + size.width * 0.14, size.height * 0.98);
 
     canvas.drawPath(path, paint);
 
@@ -450,11 +447,7 @@ class BodyOutlinePainter extends CustomPainter {
       ..color = AppTheme.warningColor.withOpacity(0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
 
-    canvas.drawCircle(
-      Offset(centerX, glowY),
-      40,
-      glowPaint,
-    );
+    canvas.drawCircle(Offset(centerX, glowY), 40, glowPaint);
   }
 
   @override

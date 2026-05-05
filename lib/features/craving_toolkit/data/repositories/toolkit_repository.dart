@@ -163,10 +163,18 @@ class ToolkitRepository {
   // ============= STATISTICS =============
 
   Future<ToolkitStatistics> calculateStatistics(String userId) async {
-    final breathingSessions = await getBreathingSessions(userId);
-    final cbtSessions = await getCbtSessions(userId);
-    final groundingSessions = await getGroundingSessions(userId);
-    final distractionSessions = await getDistractionSessions(userId);
+    final breathingSessions = (await getBreathingSessions(userId))
+        .where((session) => session.isCompleted)
+        .toList();
+    final cbtSessions = (await getCbtSessions(userId))
+        .where((session) => session.isCompleted)
+        .toList();
+    final groundingSessions = (await getGroundingSessions(userId))
+        .where((session) => session.isCompleted)
+        .toList();
+    final distractionSessions = (await getDistractionSessions(userId))
+        .where((session) => session.isCompleted)
+        .toList();
 
     // Calculate averages
     double avgBreathing = 0;
@@ -212,6 +220,7 @@ class ToolkitRepository {
     // Calculate usage maps
     final breathingUsage = <BreathingPattern, int>{};
     for (final session in breathingSessions) {
+      if (session.pattern == BreathingPattern.custom) continue;
       breathingUsage[session.pattern] = (breathingUsage[session.pattern] ?? 0) + 1;
     }
 

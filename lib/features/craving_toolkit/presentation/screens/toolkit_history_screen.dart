@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/models/toolkit_models.dart';
 import '../providers/toolkit_provider.dart';
 
 class ToolkitHistoryScreen extends ConsumerWidget {
@@ -20,6 +21,7 @@ class ToolkitHistoryScreen extends ConsumerWidget {
                   stats.totalCbtSessions +
                   stats.totalGroundingSessions +
                   stats.totalDistractionSessions;
+              final techniqueRatings = _buildTechniqueRatings(stats);
 
               if (totalSessions == 0) {
                 return Center(
@@ -84,6 +86,18 @@ class ToolkitHistoryScreen extends ConsumerWidget {
                             '${stats.cravingsResistedWithToolkit}',
                             Icons.shield,
                           ),
+                          if (techniqueRatings.isNotEmpty) ...[
+                            const Divider(height: 24),
+                            const Text(
+                              'Technique Ratings (Highest to Lowest)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...techniqueRatings,
+                          ],
                         ],
                       ),
                     ),
@@ -132,8 +146,12 @@ class ToolkitHistoryScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              ...stats.breathingPatternUsage.entries
-                                  .take(3)
+                              ...(() {
+                                final entries = stats.breathingPatternUsage.entries
+                                    .toList()
+                                  ..sort((a, b) => b.value.compareTo(a.value));
+                                return entries.take(3);
+                              }())
                                   .map((e) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
@@ -204,8 +222,12 @@ class ToolkitHistoryScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              ...stats.cbtTechniqueUsage.entries
-                                  .take(3)
+                              ...(() {
+                                final entries = stats.cbtTechniqueUsage.entries
+                                    .toList()
+                                  ..sort((a, b) => b.value.compareTo(a.value));
+                                return entries.take(3);
+                              }())
                                   .map((e) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
@@ -341,5 +363,52 @@ class ToolkitHistoryScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  List<Widget> _buildTechniqueRatings(ToolkitStatistics stats) {
+    final ratings = <({String label, double rating, Color color})>[
+      (
+        label: 'Breathing',
+        rating: stats.averageBreathingEffectiveness,
+        color: AppTheme.primaryColor,
+      ),
+      (
+        label: 'CBT',
+        rating: stats.averageCbtEffectiveness,
+        color: AppTheme.successColor,
+      ),
+      (
+        label: 'Grounding',
+        rating: stats.averageGroundingEffectiveness,
+        color: AppTheme.warningColor,
+      ),
+      (
+        label: 'Distraction',
+        rating: stats.averageDistractionEffectiveness,
+        color: AppTheme.primaryColor,
+      ),
+    ]
+      ..removeWhere((entry) => entry.rating == 0);
+
+    ratings.sort((a, b) => b.rating.compareTo(a.rating));
+
+    return ratings
+        .map(
+          (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Icon(Icons.star, size: 18, color: entry.color),
+                const SizedBox(width: 10),
+                Expanded(child: Text(entry.label)),
+                Text(
+                  '${entry.rating.toStringAsFixed(1)}/5',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        )
+        .toList();
   }
 }

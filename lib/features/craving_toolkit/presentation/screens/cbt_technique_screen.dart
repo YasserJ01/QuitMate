@@ -33,6 +33,16 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(cbtSessionProvider(widget.technique));
+    ref.listen<CbtSessionState>(
+      cbtSessionProvider(widget.technique),
+      (previous, next) {
+        final wasEnded = previous?.session?.endTime != null;
+        final isEnded = next.session?.endTime != null;
+        if (!wasEnded && isEnded) {
+          ref.invalidate(toolkitStatisticsProvider);
+        }
+      },
+    );
 
     return WillPopScope(
       onWillPop: () async {
@@ -68,17 +78,20 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
     );
   }
 
+  // FIX: Replaced Spacer() with SizedBox inside SingleChildScrollView to prevent overflow
   Widget _buildIntroScreen() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 40), // Replace first Spacer
+          const SizedBox(height: 40),
 
           // Technique emoji
           Text(
             widget.technique.emoji,
             style: const TextStyle(fontSize: 80),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
 
@@ -113,9 +126,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
                     const SizedBox(width: 12),
                     Text(
                       'Estimated Time: ${widget.technique.estimatedMinutes} minutes',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -127,9 +138,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
                     const Expanded(
                       child: Text(
                         'Evidence-based cognitive behavioral therapy',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -141,35 +150,28 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
 
           // What to expect
           _buildExpectationCard(),
-
-          const SizedBox(height: 32), // Replace second Spacer
+          const SizedBox(height: 40),
 
           // Start button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () async {
-                await ref
-                    .read(cbtSessionProvider(widget.technique).notifier)
-                    .start();
-                setState(() {
-                  _hasStarted = true;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.successColor,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Begin Exercise',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ElevatedButton(
+            onPressed: () async {
+              await ref
+                  .read(cbtSessionProvider(widget.technique).notifier)
+                  .start();
+              setState(() {
+                _hasStarted = true;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Begin Exercise',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 40), // Bottom padding for safe area
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -223,7 +225,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -289,30 +291,35 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
           curve: Curves.easeInOut,
         );
       },
+      // FIX: _completeExercise now correctly saves responses AND triggers
+      // the effectiveness rating dialog which calls notifier.complete().
       onComplete: (responses) => _completeExercise(responses),
     );
   }
 
+  // FIX: Replaced Spacer() with SizedBox inside SingleChildScrollView to prevent overflow
   Widget _buildCompletionScreen(CbtSessionState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 40), // Replace first Spacer
+          const SizedBox(height: 40),
 
           // Success icon
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle,
-              size: 60,
-              color: AppTheme.successColor,
+          Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                size: 60,
+                color: AppTheme.successColor,
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -321,6 +328,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
           Text(
             'Exercise Complete!',
             style: Theme.of(context).textTheme.displaySmall,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
@@ -354,45 +362,32 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
               ],
             ),
           ),
-
-          const SizedBox(height: 48), // Replace second Spacer
+          const SizedBox(height: 48),
 
           // Action buttons
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showEffectivenessRating(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.successColor,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Rate Effectiveness',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ElevatedButton(
+            onPressed: () => _showEffectivenessRating(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Rate Effectiveness',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Return to Toolkit',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Return to Toolkit',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 40), // Bottom padding for safe area
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -413,7 +408,12 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
     }
   }
 
+  // FIX: Previously only called updateThoughts() but never called complete(),
+  // so isCompleted stayed false and the completion screen was never shown.
+  // Now correctly: saves thought data first, then immediately shows the
+  // effectiveness rating dialog, then calls notifier.complete() to transition state.
   Future<void> _completeExercise(Map<String, dynamic> responses) async {
+    // Save any text responses collected during the exercise
     await ref
         .read(cbtSessionProvider(widget.technique).notifier)
         .updateThoughts(
@@ -422,31 +422,38 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
       consequences: responses['consequences'],
       alternativeChosen: responses['alternativeChosen'],
     );
+
+    if (!mounted) return;
+
+    // FIX: Show rating dialog then complete the session
+    _showEffectivenessRating();
   }
 
   void _showEffectivenessRating() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => const CbtEffectivenessDialog(),
     );
 
-    if (result != null) {
-      await ref
-          .read(cbtSessionProvider(widget.technique).notifier)
-          .complete(
-        result['wasHelpful'] as bool,
-        result['rating'] as int,
-      );
+    if (!mounted) return;
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thank you for your feedback!'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      }
+    // Use defaults if user tapped Skip
+    final wasHelpful = result != null ? result['wasHelpful'] as bool : true;
+    final rating = result != null ? result['rating'] as int : 3;
+
+    await ref
+        .read(cbtSessionProvider(widget.technique).notifier)
+        .complete(wasHelpful, rating);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for your feedback!'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+      Navigator.pop(context);
     }
   }
 

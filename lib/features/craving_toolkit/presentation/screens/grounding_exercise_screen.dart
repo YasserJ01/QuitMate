@@ -32,6 +32,16 @@ class _GroundingExerciseScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(groundingSessionProvider(widget.exercise));
+    ref.listen<GroundingSessionState>(
+      groundingSessionProvider(widget.exercise),
+      (previous, next) {
+        final wasEnded = previous?.session?.endTime != null;
+        final isEnded = next.session?.endTime != null;
+        if (!wasEnded && isEnded) {
+          ref.invalidate(toolkitStatisticsProvider);
+        }
+      },
+    );
 
     return WillPopScope(
       onWillPop: () async {
@@ -67,17 +77,20 @@ class _GroundingExerciseScreenState
     );
   }
 
+  // FIX: Replaced Spacer() with SizedBox + SingleChildScrollView to prevent overflow
   Widget _buildIntroScreen() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Spacer(),
+          const SizedBox(height: 32),
 
           // Exercise emoji
           Text(
             widget.exercise.emoji,
             style: const TextStyle(fontSize: 80),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
 
@@ -112,9 +125,7 @@ class _GroundingExerciseScreenState
                     const SizedBox(width: 12),
                     Text(
                       'Estimated Time: ${widget.exercise.estimatedMinutes} ${widget.exercise.estimatedMinutes == 1 ? "minute" : "minutes"}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -126,9 +137,7 @@ class _GroundingExerciseScreenState
                     Expanded(
                       child: Text(
                         'Grounding brings you to the present moment',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -140,35 +149,28 @@ class _GroundingExerciseScreenState
 
           // Purpose card
           _buildPurposeCard(),
-
-          const Spacer(),
+          const SizedBox(height: 40),
 
           // Start button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () async {
-                await ref
-                    .read(groundingSessionProvider(widget.exercise).notifier)
-                    .start();
-                setState(() {
-                  _hasStarted = true;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.warningColor,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Begin Exercise',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ElevatedButton(
+            onPressed: () async {
+              await ref
+                  .read(groundingSessionProvider(widget.exercise).notifier)
+                  .start();
+              setState(() {
+                _hasStarted = true;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.warningColor,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Begin Exercise',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -212,7 +214,8 @@ class _GroundingExerciseScreenState
         ];
         break;
       case GroundingExercise.coldWater:
-        purpose = 'Use cold water to activate your parasympathetic nervous system';
+        purpose =
+        'Use cold water to activate your parasympathetic nervous system';
         benefits = [
           'Instant physiological reset',
           'Interrupts panic response',
@@ -239,21 +242,23 @@ class _GroundingExerciseScreenState
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            ...benefits.map((benefit) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: AppTheme.successColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(benefit)),
-                ],
+            ...benefits.map(
+                  (benefit) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: AppTheme.successColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(benefit)),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -285,26 +290,29 @@ class _GroundingExerciseScreenState
     }
   }
 
+  // FIX: Replaced Spacer() with SizedBox + SingleChildScrollView to prevent overflow
   Widget _buildCompletionScreen(GroundingSessionState state) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Spacer(),
+          const SizedBox(height: 48),
 
           // Success icon
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: AppTheme.warningColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle,
-              size: 60,
-              color: AppTheme.warningColor,
+          Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppTheme.warningColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                size: 60,
+                color: AppTheme.warningColor,
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -313,6 +321,7 @@ class _GroundingExerciseScreenState
           Text(
             'Exercise Complete!',
             style: Theme.of(context).textTheme.displaySmall,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
@@ -346,45 +355,32 @@ class _GroundingExerciseScreenState
               ],
             ),
           ),
-
-          const Spacer(),
+          const SizedBox(height: 48),
 
           // Action buttons
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showEffectivenessRating(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.warningColor,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Rate Effectiveness',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ElevatedButton(
+            onPressed: () => _showEffectivenessRating(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.warningColor,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Rate Effectiveness',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-              ),
-              child: const Text(
-                'Return to Toolkit',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            child: const Text(
+              'Return to Toolkit',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -405,8 +401,11 @@ class _GroundingExerciseScreenState
     }
   }
 
+  // FIX: Now correctly transitions to completion state AND shows rating flow.
+  // Previously only saved responses for fiveSenses but never called notifier.complete(),
+  // meaning isCompleted stayed false and the completion screen never appeared.
   Future<void> _completeExercise(Map<String, dynamic> responses) async {
-    // Save responses based on exercise type
+    // Save sense responses first if applicable
     if (widget.exercise == GroundingExercise.fiveSenses) {
       await ref
           .read(groundingSessionProvider(widget.exercise).notifier)
@@ -418,28 +417,36 @@ class _GroundingExerciseScreenState
         taste: responses['taste'],
       );
     }
+
+    // FIX: Immediately show rating dialog then complete — drives isCompleted = true
+    if (!mounted) return;
+    _showEffectivenessRating();
   }
 
   void _showEffectivenessRating() async {
     final rating = await showDialog<int>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => const EffectivenessRatingDialog(),
     );
 
-    if (rating != null) {
-      await ref
-          .read(groundingSessionProvider(widget.exercise).notifier)
-          .complete(rating);
+    if (!mounted) return;
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Great job staying grounded!'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      }
+    // Use rating or default to 3 if skipped
+    final effectivenessRating = rating ?? 3;
+
+    await ref
+        .read(groundingSessionProvider(widget.exercise).notifier)
+        .complete(effectivenessRating);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Great job staying grounded!'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+      Navigator.pop(context);
     }
   }
 
