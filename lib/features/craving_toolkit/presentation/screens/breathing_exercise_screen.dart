@@ -38,6 +38,16 @@ class _BreathingExerciseScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(breathingExerciseProvider(widget.pattern));
+    ref.listen<BreathingExerciseState>(
+      breathingExerciseProvider(widget.pattern),
+      (previous, next) {
+        final wasEnded = previous?.session?.endTime != null;
+        final isEnded = next.session?.endTime != null;
+        if (!wasEnded && isEnded) {
+          ref.invalidate(toolkitStatisticsProvider);
+        }
+      },
+    );
 
     return WillPopScope(
       onWillPop: () async {
@@ -144,14 +154,22 @@ class _BreathingExerciseScreenState
                           _buildPatternRow('Pause', widget.pattern.pauseSeconds),
                         ],
                         const Divider(height: 24, color: Colors.white24),
-                        _buildPatternRow(
-                          'Total Cycle',
-                          widget.pattern.totalCycleSeconds,
-                          isTotal: true,
-                        ),
-                      ],
-                    ),
+                _buildPatternRow(
+                  'Total Cycle',
+                  widget.pattern.totalCycleSeconds,
+                  isTotal: true,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Durations are aligned to full cycles.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
                   ),
+                ),
+              ],
+            ),
+          ),
                   const SizedBox(height: 32),
                   Text(
                     'Duration',
@@ -161,15 +179,14 @@ class _BreathingExerciseScreenState
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center, // Horizontal alignment
+                    spacing: 12.0,                  // Gap between adjacent chips
+                    runSpacing: 8.0,                // Gap between lines
                     children: [
                       _buildDurationChip(30, '30s'),
-                      const SizedBox(width: 12),
                       _buildDurationChip(60, '1m'),
-                      const SizedBox(width: 12),
                       _buildDurationChip(90, '90s'),
-                      const SizedBox(width: 12),
                       _buildDurationChip(120, '2m'),
                     ],
                   ),
@@ -238,8 +255,15 @@ class _BreathingExerciseScreenState
 
   Widget _buildDurationChip(int seconds, String label) {
     final isSelected = _selectedDuration == seconds;
+    final cycleSeconds = widget.pattern.totalCycleSeconds;
+    final alignedSeconds = cycleSeconds == 0
+        ? seconds
+        : seconds + ((cycleSeconds - (seconds % cycleSeconds)) % cycleSeconds);
+    final displayLabel = alignedSeconds == seconds
+        ? label
+        : '${label} (${_formatTime(alignedSeconds)})';
     return ChoiceChip(
-      label: Text(label),
+      label: Text(displayLabel),
       selected: isSelected,
       onSelected: (selected) {
         if (selected) {
@@ -278,7 +302,10 @@ class _BreathingExerciseScreenState
               children: [
                 // Time remaining
                 Text(
-                  _formatTime(state.targetDuration - state.elapsedSeconds),
+                  _formatTime(
+                    (state.targetDuration - state.elapsedSeconds)
+                        .clamp(0, state.targetDuration),
+                  ),
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 18,
@@ -606,20 +633,19 @@ class _BreathingExerciseScreenState
       builder: (context) => const EffectivenessRatingDialog(),
     );
 
-    if (rating != null) {
-      await ref
-          .read(breathingExerciseProvider(widget.pattern).notifier)
-          .complete(rating);
+    final effectivenessRating = rating ?? 3;
+    await ref
+        .read(breathingExerciseProvider(widget.pattern).notifier)
+        .complete(effectivenessRating);
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Great job! Keep up the practice.'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Great job! Keep up the practice.'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+      Navigator.pop(context);
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class ColdWaterExercise extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
@@ -14,29 +15,41 @@ class ColdWaterExercise extends StatefulWidget {
 
 class _ColdWaterExerciseState extends State<ColdWaterExercise> {
   bool _hasCompleted = false;
+  bool _isHolding = false;
+  int _holdSeconds = 20;
+  static const int _defaultHoldSeconds = 20;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     if (_hasCompleted) {
       return _buildCompletedScreen();
     }
+    return _buildInstructionScreen();
+  }
 
-    return Padding(
+  // FIX: Replaced Spacer() with SizedBox inside SingleChildScrollView to prevent overflow
+  Widget _buildInstructionScreen() {
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Spacer(),
+          const SizedBox(height: 32),
 
-          const Icon(
-            Icons.water_drop,
-            size: 80,
-            color: Colors.blue,
-          ),
+          const Icon(Icons.water_drop, size: 80, color: Colors.blue),
           const SizedBox(height: 24),
 
           Text(
             'Cold Water Reset',
             style: Theme.of(context).textTheme.headlineMedium,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
@@ -51,28 +64,24 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
           const SizedBox(height: 24),
 
           _buildScienceCard(),
+          const SizedBox(height: 40),
 
-          const Spacer(),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _hasCompleted = true;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'I\'ve Done It',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
+          ElevatedButton(
+            onPressed: _isHolding ? null : _startHoldTimer,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: Text(
+              _isHolding ? 'Hold in Progress...' : 'Start 20s Hold',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 16),
+          if (_isHolding) ...[
+            const SizedBox(height: 16),
+            _buildHoldTimerCard(),
+          ],
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -87,10 +96,7 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
           children: [
             const Text(
               'How to do it:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             const SizedBox(height: 16),
             _buildStep(1, 'Go to a sink with cold water'),
@@ -106,37 +112,37 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
 
   Widget _buildStep(int number, String text) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            Container(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
             width: 28,
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$number',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+            height: 28,
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '$number',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
             ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(text),
-                ),
-              ),
-            ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(text),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -146,10 +152,7 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
       decoration: BoxDecoration(
         color: Colors.blue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.blue.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,10 +163,7 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
               SizedBox(width: 8),
               Text(
                 'The Science:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ],
           ),
@@ -188,41 +188,32 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.arrow_right,
-            size: 16,
-            color: Colors.blue,
-          ),
+          const Icon(Icons.arrow_right, size: 16, color: Colors.blue),
           const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );
   }
 
+  // FIX: Replaced Spacer() with SizedBox inside SingleChildScrollView to prevent overflow
   Widget _buildCompletedScreen() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Spacer(),
+          const SizedBox(height: 48),
 
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle,
-              size: 60,
-              color: Colors.blue,
+          Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle, size: 60, color: Colors.blue),
             ),
           ),
           const SizedBox(height: 24),
@@ -230,6 +221,7 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
           Text(
             'Great Job!',
             style: Theme.of(context).textTheme.headlineMedium,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
@@ -248,10 +240,7 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
                 children: [
                   const Text(
                     'Notice:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 12),
                   _buildNoticeItem('Is your heart rate slower?'),
@@ -262,26 +251,22 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
               ),
             ),
           ),
+          const SizedBox(height: 40),
 
-          const Spacer(),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                widget.onComplete({'completed': true});
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'Complete Exercise',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
+          ElevatedButton(
+            onPressed: () {
+              widget.onComplete({'completed': true});
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text(
+              'Complete Exercise',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -293,13 +278,59 @@ class _ColdWaterExerciseState extends State<ColdWaterExercise> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.psychology,
-            size: 16,
-            color: Colors.blue,
-          ),
+          const Icon(Icons.psychology, size: 16, color: Colors.blue),
           const SizedBox(width: 8),
           Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+
+  void _startHoldTimer() {
+    setState(() {
+      _isHolding = true;
+      _holdSeconds = _defaultHoldSeconds;
+    });
+
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_holdSeconds > 1) {
+        setState(() {
+          _holdSeconds -= 1;
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          _isHolding = false;
+          _hasCompleted = true;
+        });
+      }
+    });
+  }
+
+  Widget _buildHoldTimerCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.timer, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Hold for $_holdSeconds seconds',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );

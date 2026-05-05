@@ -296,7 +296,7 @@ enum GroundingExercise {
       case GroundingExercise.objectFocus:
         return 'Study one object in detail for 60 seconds.';
       case GroundingExercise.counting:
-        return 'Count backwards from 100 by 7s.';
+        return 'Count backwards by 7s to reset your focus.';
       case GroundingExercise.coldWater:
         return 'Splash cold water on your face to reset your nervous system.';
     }

@@ -390,7 +390,9 @@ class CravingToolkitScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          ...BreathingPattern.values.map((pattern) {
+          ...BreathingPattern.values
+              .where((pattern) => pattern != BreathingPattern.custom)
+              .map((pattern) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: ListTile(
