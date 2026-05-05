@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import '../data/models/notification_models.dart';
 import '../data/notification_content.dart';
 import '../data/repositories/notification_repository.dart';
@@ -7,40 +8,54 @@ import '../../onboarding/data/repositories/profile_repository.dart';
 import '../../tracking/services/statistics_calculator.dart';
 import 'push_notification_service.dart';
 
+/// Business-logic layer that decides *what* to send and *when*.
+///
+/// Scheduling strategy
+/// ───────────────────
+/// 1. On each call to [scheduleForNextDays] we wipe all pending platform
+///    notifications and reschedule from scratch for the next N days.
+/// 2. The number of notifications per day is controlled by the user's
+///    [NotificationPreferences.frequency] setting.
+/// 3. Quiet hours are always respected.
+/// 4. The *type* of notification is chosen adaptively based on recent stats.
+/// 5. Event-triggered notifications (craving logged, milestone reached, etc.)
+///    are sent immediately and do not count towards the daily quota.
 class NotificationSchedulerService {
-  final NotificationRepository _notificationRepo;
+  final NotificationRepository _repo;
   final TrackingRepository _trackingRepo;
   final ProfileRepository _profileRepo;
-  final PushNotificationService _pushNotifications;
+  final PushNotificationService _push;
+
+  static final _rng = Random();
 
   NotificationSchedulerService({
     required NotificationRepository notificationRepo,
     required TrackingRepository trackingRepo,
     required ProfileRepository profileRepo,
     required PushNotificationService pushNotifications,
-  })  : _notificationRepo = notificationRepo,
+  })  : _repo = notificationRepo,
         _trackingRepo = trackingRepo,
         _profileRepo = profileRepo,
-        _pushNotifications = pushNotifications;
+        _push = pushNotifications;
 
-  // ============= MAIN SCHEDULING =============
+  // ─── Main entry point ────────────────────────────────────────────────────
 
-  /// Schedule notifications for the next 7 days
-  Future<void> scheduleNotifications(String userId) async {
-    final prefs = await _notificationRepo.getPreferences(userId);
+  /// Schedule notifications for the next [days] days.
+  ///
+  /// Calling this replaces **all** existing scheduled platform notifications.
+  Future<void> scheduleForNextDays(String userId, {int days = 7}) async {
+    final prefs = await _repo.getPreferences(userId);
 
     if (!prefs.notificationsEnabled) {
-      await _pushNotifications.cancelAllNotifications();
+      await _push.cancelAll();
       return;
     }
 
-    // Clear old scheduled notifications
-    await _notificationRepo.clearOldScheduledNotifications(userId);
+    // Housekeeping
+    await _repo.pruneOld(userId);
+    await _push.cancelAll();
 
-    // Cancel existing platform notifications
-    await _pushNotifications.cancelAllNotifications();
-
-    // Get user data for adaptive content
+    // Gather adaptive context
     final profile = await _profileRepo.getProfile(userId);
     if (profile == null) return;
 
@@ -52,479 +67,376 @@ class NotificationSchedulerService {
       profile: profile,
     );
 
-    // Schedule for next 7 days
-    final now = DateTime.now();
-    for (int day = 0; day < 7; day++) {
-      final targetDate = now.add(Duration(days: day));
-      await _scheduleDailyNotifications(
-        userId,
-        targetDate,
-        prefs,
-        stats,
-        profile.goalType.name,
-      );
+    for (var day = 0; day < days; day++) {
+      final date = DateTime.now().add(Duration(days: day));
+      await _scheduleDayBatch(userId, date, prefs, stats);
     }
   }
 
-  Future<void> _scheduleDailyNotifications(
+  // ─── Per-day batch ───────────────────────────────────────────────────────
+
+  Future<void> _scheduleDayBatch(
       String userId,
       DateTime date,
       NotificationPreferences prefs,
       dynamic stats,
-      String goalType,
       ) async {
-    final maxNotifications = prefs.frequency.maxDailyNotifications;
-    final scheduledTimes = _generateOptimalTimes(date, prefs, maxNotifications);
+    final types =
+    _selectTypes(prefs, stats, prefs.frequency.maxPerDay);
+    final times = _generateTimes(date, prefs, types.length);
 
-    // Determine notification types based on user behavior
-    final notificationTypes = _selectNotificationTypes(
-      prefs,
-      stats,
-      maxNotifications,
-    );
-
-    for (int i = 0; i < scheduledTimes.length && i < notificationTypes.length; i++) {
-      final scheduledTime = scheduledTimes[i];
-      final type = notificationTypes[i];
-
-      // Skip if in quiet hours
+    for (var i = 0; i < times.length && i < types.length; i++) {
+      final scheduledTime = times[i];
       if (prefs.isInQuietHours(scheduledTime)) continue;
 
-      // Generate notification content
-      final notification = await _generateNotification(
+      final notification = await _buildNotification(
         userId: userId,
-        type: type,
+        type: types[i],
         scheduledTime: scheduledTime,
         stats: stats,
-        goalType: goalType,
       );
 
-      // Save to database
-      final saved = await _notificationRepo.scheduleNotification(notification);
-
-      // Schedule with platform
-      await _pushNotifications.scheduleNotification(
+      final saved = await _repo.save(notification);
+      await _push.scheduleNotification(
         id: saved.id,
-        title: notification.title,
-        body: notification.body,
+        title: saved.title,
+        body: saved.body,
         scheduledTime: scheduledTime,
-        payload: notification.payload,
+        payload: saved.payload,
       );
     }
   }
 
-  // ============= ADAPTIVE TYPE SELECTION =============
+  // ─── Adaptive type selection ─────────────────────────────────────────────
 
-  List<NotificationType> _selectNotificationTypes(
+  List<NotificationType> _selectTypes(
       NotificationPreferences prefs,
       dynamic stats,
       int count,
       ) {
-    final types = <NotificationType>[];
-    final availableTypes = <NotificationType>[];
+    final selected = <NotificationType>[];
 
-    // Always include daily check-in if enabled
-    if (prefs.dailyCheckInEnabled && types.isEmpty) {
-      types.add(NotificationType.dailyCheckIn);
-    }
-
-    // Build available types pool based on preferences
-    if (prefs.encouragementEnabled) {
-      availableTypes.add(NotificationType.encouragement);
-    }
-    if (prefs.cravingTipsEnabled) {
-      availableTypes.add(NotificationType.cravingTip);
-    }
-    if (prefs.microChallengesEnabled) {
-      availableTypes.add(NotificationType.microChallenge);
-    }
-    if (prefs.healthFactsEnabled) {
-      availableTypes.add(NotificationType.healthFact);
-    }
-    if (prefs.motivationalQuotesEnabled) {
-      availableTypes.add(NotificationType.motivationalQuote);
+    // Guaranteed slot: daily check-in (first notification of the day)
+    if (prefs.dailyCheckInEnabled) {
+      selected.add(NotificationType.dailyCheckIn);
     }
 
-    // Add milestone if applicable
-    if (prefs.milestoneEnabled && _shouldSendMilestone(stats)) {
-      types.add(NotificationType.milestone);
+    // Priority-weighted pool
+    final pool = <NotificationType>[];
+
+    void _addIf(bool enabled, NotificationType type, [int weight = 1]) {
+      if (enabled) {
+        for (var i = 0; i < weight; i++) {
+          pool.add(type);
+        }
+      }
     }
 
-    // Add progress update weekly
-    if (prefs.progressUpdatesEnabled && _shouldSendProgressUpdate(stats)) {
-      types.add(NotificationType.progressUpdate);
+    // Struggling with cravings? Prioritise tips + encouragement
+    final resistanceRate = (stats.cravingResistanceRate as num?)?.toDouble() ?? 50.0;
+    final cravingWeight = resistanceRate < 50 ? 3 : 1;
+
+    _addIf(prefs.cravingTipsEnabled, NotificationType.cravingTip, cravingWeight);
+    _addIf(prefs.encouragementEnabled, NotificationType.encouragement,
+        resistanceRate > 70 ? 2 : 1);
+    _addIf(prefs.microChallengesEnabled, NotificationType.microChallenge);
+    _addIf(prefs.healthFactsEnabled, NotificationType.healthFact);
+    _addIf(prefs.motivationalQuotesEnabled, NotificationType.motivationalQuote);
+
+    // Milestone (only if today is a milestone day)
+    if (prefs.milestoneEnabled && _isMilestoneDay(stats)) {
+      selected.add(NotificationType.milestone);
     }
 
-    // Add streak reminder if needed
-    if (prefs.streakRemindersEnabled && stats.currentStreak > 0) {
-      types.add(NotificationType.streakReminder);
+    // Weekly progress update
+    if (prefs.progressUpdatesEnabled &&
+        DateTime.now().weekday == DateTime.monday) {
+      selected.add(NotificationType.progressUpdate);
     }
 
-    // Adaptive selection based on user behavior
-    if (stats.totalCravings > stats.cravingsResisted * 1.5) {
-      // Struggling with cravings - prioritize tips and encouragement
-      availableTypes
-        ..remove(NotificationType.cravingTip)
-        ..insertAll(0, [
-          NotificationType.cravingTip,
-          NotificationType.cravingTip,
-          NotificationType.encouragement,
-        ]);
+    // Streak reminder (last slot of the day, if streaking)
+    final streak = (stats.currentStreak as num?)?.toInt() ?? 0;
+    if (prefs.streakRemindersEnabled && streak > 0) {
+      selected.add(NotificationType.streakReminder);
     }
 
-    if (stats.cravingResistanceRate > 70) {
-      // Doing well - more positive reinforcement
-      availableTypes
-        ..remove(NotificationType.encouragement)
-        ..insertAll(0, [
-          NotificationType.encouragement,
-          NotificationType.motivationalQuote,
-        ]);
+    // Fill remaining slots from weighted pool
+    pool.shuffle(_rng);
+    while (selected.length < count && pool.isNotEmpty) {
+      selected.add(pool.removeAt(0));
     }
 
-    // Fill remaining slots
-    availableTypes.shuffle();
-    while (types.length < count && availableTypes.isNotEmpty) {
-      types.add(availableTypes.removeAt(0));
-    }
-
-    return types;
+    return selected.take(count).toList();
   }
 
-  // ============= OPTIMAL TIME GENERATION =============
+  // ─── Time generation ─────────────────────────────────────────────────────
 
-  List<DateTime> _generateOptimalTimes(
+  List<DateTime> _generateTimes(
       DateTime date,
       NotificationPreferences prefs,
       int count,
       ) {
     final times = <DateTime>[];
-    final preferredHours = List<int>.from(prefs.preferredHours)..shuffle();
+    final candidates = List<int>.from(prefs.preferredHours)..shuffle(_rng);
 
-    // Start with preferred hours
-    for (final hour in preferredHours) {
+    for (final hour in candidates) {
       if (times.length >= count) break;
-
-      final time = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        hour,
-        Random().nextInt(60), // Random minute
-      );
-
-      if (!prefs.isInQuietHours(time) && time.isAfter(DateTime.now())) {
-        times.add(time);
-      }
+      final t = _candidate(date, hour);
+      if (_acceptable(t, prefs, times)) times.add(t);
     }
 
-    // If we need more times, generate them
-    while (times.length < count) {
-      final hour = _generateRandomHour(prefs);
-      final time = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        hour,
-        Random().nextInt(60),
-      );
-
-      if (!prefs.isInQuietHours(time) &&
-          time.isAfter(DateTime.now()) &&
-          !_isTooClose(time, times)) {
-        times.add(time);
-      }
+    // Backfill with random hours if preferred slots ran out
+    var attempts = 0;
+    while (times.length < count && attempts < 50) {
+      attempts++;
+      final hour = 8 + _rng.nextInt(14); // 08:00–21:59
+      final t = _candidate(date, hour);
+      if (_acceptable(t, prefs, times)) times.add(t);
     }
 
     times.sort();
     return times;
   }
 
-  int _generateRandomHour(NotificationPreferences prefs) {
-    // Generate hour avoiding quiet hours
-    int hour;
-    do {
-      hour = 8 + Random().nextInt(14); // Between 8 AM and 10 PM
-    } while (prefs.isInQuietHours(DateTime(2024, 1, 1, hour)));
+  DateTime _candidate(DateTime date, int hour) => DateTime(
+    date.year,
+    date.month,
+    date.day,
+    hour,
+    _rng.nextInt(60),
+  );
 
-    return hour;
+  bool _acceptable(
+      DateTime t,
+      NotificationPreferences prefs,
+      List<DateTime> existing,
+      ) {
+    if (!t.isAfter(DateTime.now())) return false;
+    if (prefs.isInQuietHours(t)) return false;
+    // Minimum 90-minute gap between notifications
+    return existing.every(
+          (e) => t.difference(e).abs().inMinutes >= 90,
+    );
   }
 
-  bool _isTooClose(DateTime time, List<DateTime> existingTimes) {
-    // Ensure at least 2 hours between notifications
-    for (final existing in existingTimes) {
-      if (time.difference(existing).abs().inMinutes < 120) {
-        return true;
-      }
-    }
-    return false;
-  }
+  // ─── Notification builder ────────────────────────────────────────────────
 
-  // ============= CONTENT GENERATION =============
-
-  Future<ScheduledNotification> _generateNotification({
+  Future<ScheduledNotification> _buildNotification({
     required String userId,
     required NotificationType type,
     required DateTime scheduledTime,
     required dynamic stats,
-    required String goalType,
   }) async {
-    final notification = ScheduledNotification()
+    final n = ScheduledNotification()
       ..userId = userId
       ..type = type
       ..scheduledTime = scheduledTime;
 
     if (type == NotificationType.microChallenge) {
-      final challenge = NotificationContent.getRandomMicroChallenge();
-      notification.title = '⚡ ${challenge.title}';
-      notification.body = challenge.description;
-      notification.payload = _createPayload({
-        'type': 'micro_challenge',
-        'action': challenge.actionType,
-      });
+      final challenge = NotificationContent.randomMicroChallenge();
+      n
+        ..title = '⚡ ${challenge.title}'
+        ..body = challenge.description
+        ..payload = _payload({
+          'type': 'micro_challenge',
+          'action': challenge.actionType,
+        });
     } else {
-      final template = NotificationContent.getRandomTemplate(type);
-      final data = _getUserData(stats, goalType);
-
-      notification.title = template.formatTitle(data);
-      notification.body = template.formatBody(data);
-      notification.payload = _createPayload({'type': type.name});
-
-      // Store user data for reference
-      if (data != null) {
-        notification.relatedStreakDays = data['days'] as int?;
-        notification.relatedMoneySaved = data['money'] as int?;
-      }
+      final template = NotificationContent.randomTemplate(type);
+      final data = _userData(stats);
+      n
+        ..title = template.formatTitle(data)
+        ..body = template.formatBody(data)
+        ..payload = _payload({'type': type.name})
+        ..relatedStreakDays = data['days'] as int?
+        ..relatedMoneySaved = data['money'] as int?;
     }
 
-    return notification;
+    return n;
   }
 
-  Map<String, dynamic>? _getUserData(dynamic stats, String goalType) {
-    return {
-      'days': stats.currentStreak,
-      'money': stats.moneySaved.round(),
-      'cravings': stats.cravingsResisted,
-      'rate': stats.cravingResistanceRate.round(),
-    };
-  }
+  Map<String, dynamic> _userData(dynamic stats) => {
+    'days': (stats.currentStreak as num?)?.toInt() ?? 0,
+    'money': (stats.moneySaved as num?)?.round() ?? 0,
+    'cravings': (stats.cravingsResisted as num?)?.toInt() ?? 0,
+    'rate': (stats.cravingResistanceRate as num?)?.round() ?? 0,
+  };
 
-  String _createPayload(Map<String, dynamic> data) {
-    // Simple key-value format for deep linking
-    return data.entries.map((e) => '${e.key}=${e.value}').join('&');
-  }
+  String _payload(Map<String, dynamic> data) =>
+      data.entries.map((e) => '${e.key}=${e.value}').join('&');
 
-  // ============= BEHAVIORAL TRIGGERS =============
+  // ─── Event-triggered notifications ──────────────────────────────────────
 
-  /// Send immediate notification when user logs a craving
+  /// Call when the user logs a craving — sends supportive tip after 30 min.
   Future<void> onCravingLogged(String userId) async {
-    final prefs = await _notificationRepo.getPreferences(userId);
+    final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled || !prefs.cravingTipsEnabled) return;
 
-    // Wait 30 minutes, then send encouragement
     final scheduledTime = DateTime.now().add(const Duration(minutes: 30));
-
-    final notification = ScheduledNotification()
+    final n = ScheduledNotification()
       ..userId = userId
-      ..type = NotificationType.encouragement
+      ..type = NotificationType.cravingTip
       ..scheduledTime = scheduledTime
-      ..title = 'You Can Do This! 💪'
-      ..body = 'You recognized a craving. That\'s a huge step! Want to try a grounding exercise?'
-      ..payload = _createPayload({'type': 'craving_support', 'action': 'open_toolkit'});
+      ..title = 'You can do this! 💪'
+      ..body =
+          "You recognised a craving — that's a huge step. Want to try a breathing exercise?"
+      ..payload = _payload({'type': 'craving_support', 'action': 'open_toolkit'});
 
-    final saved = await _notificationRepo.scheduleNotification(notification);
-
-    await _pushNotifications.scheduleNotification(
+    final saved = await _repo.save(n);
+    await _push.scheduleNotification(
       id: saved.id,
-      title: notification.title,
-      body: notification.body,
+      title: saved.title,
+      body: saved.body,
       scheduledTime: scheduledTime,
-      payload: notification.payload,
+      payload: saved.payload,
     );
   }
 
-  /// Send immediate notification when user successfully resists
+  /// Call when the user successfully resists a craving — immediate celebration.
   Future<void> onCravingResisted(String userId) async {
-    final prefs = await _notificationRepo.getPreferences(userId);
+    final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled || !prefs.encouragementEnabled) return;
 
-    final notification = ScheduledNotification()
+    final n = ScheduledNotification()
       ..userId = userId
       ..type = NotificationType.encouragement
       ..scheduledTime = DateTime.now()
       ..title = 'Victory! 🎉'
-      ..body = 'You just proved you\'re stronger than the craving. Amazing work!'
-      ..payload = _createPayload({'type': 'celebration'});
+      ..body = "You just proved you're stronger than the craving. Amazing!"
+      ..payload = _payload({'type': 'celebration'});
 
-    final saved = await _notificationRepo.scheduleNotification(notification);
-
-    await _pushNotifications.showImmediateNotification(
+    final saved = await _repo.save(n);
+    await _push.showImmediate(
       id: saved.id,
-      title: notification.title,
-      body: notification.body,
-      payload: notification.payload,
+      title: saved.title,
+      body: saved.body,
+      payload: saved.payload,
     );
-
-    await _notificationRepo.markAsSent(saved.id);
+    await _repo.markSent(saved.id);
   }
 
-  /// Send milestone notification when user reaches a streak milestone
+  /// Call when the user hits a recognised streak milestone.
   Future<void> onStreakMilestone(String userId, int streakDays) async {
-    final prefs = await _notificationRepo.getPreferences(userId);
+    final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled || !prefs.milestoneEnabled) return;
 
-    final milestones = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
-    if (!milestones.contains(streakDays)) return;
+    if (!_milestones.contains(streakDays)) return;
 
-    final notification = ScheduledNotification()
+    final n = ScheduledNotification()
       ..userId = userId
       ..type = NotificationType.milestone
       ..scheduledTime = DateTime.now()
-      ..title = '🎉 ${streakDays} Day Milestone!'
-      ..body = _getMilestoneMessage(streakDays)
+      ..title = '🎉 $streakDays day milestone!'
+      ..body = _milestoneMessage(streakDays)
       ..relatedStreakDays = streakDays
-      ..payload = _createPayload({'type': 'milestone', 'days': streakDays});
+      ..payload = _payload({'type': 'milestone', 'days': streakDays});
 
-    final saved = await _notificationRepo.scheduleNotification(notification);
-
-    await _pushNotifications.showImmediateNotification(
+    final saved = await _repo.save(n);
+    await _push.showImmediate(
       id: saved.id,
-      title: notification.title,
-      body: notification.body,
-      payload: notification.payload,
+      title: saved.title,
+      body: saved.body,
+      payload: saved.payload,
     );
-
-    await _notificationRepo.markAsSent(saved.id);
+    await _repo.markSent(saved.id);
   }
 
-  String _getMilestoneMessage(int days) {
-    if (days == 1) return 'You made it through the first day! That\'s huge!';
-    if (days == 3) return 'Three days strong! You\'re building momentum!';
-    if (days == 7) return 'One week! Your body is already healing!';
-    if (days == 14) return 'Two weeks! You\'re crushing it!';
-    if (days == 21) return 'Three weeks! New habits are forming!';
-    if (days == 30) return 'One month! This is a major achievement!';
-    if (days == 60) return 'Two months! You\'re unstoppable!';
-    if (days == 90) return 'Three months! You\'ve transformed your life!';
-    if (days == 180) return 'Six months! You\'re an inspiration!';
-    if (days == 365) return 'One YEAR! You\'re a legend!';
-    return 'Amazing streak! Keep going!';
-  }
+  /// Call when the app detects [lastOpenedAt] was > 24 h ago.
+  Future<void> onInactivityDetected(
+      String userId, DateTime lastOpenedAt) async {
+    final hoursSince = DateTime.now().difference(lastOpenedAt).inHours;
+    if (hoursSince < 24) return;
 
-  /// Send notification if user hasn't opened app in 24 hours
-  Future<void> checkInactivity(String userId, DateTime lastOpenedAt) async {
-    final now = DateTime.now();
-    final hoursSinceLastOpen = now.difference(lastOpenedAt).inHours;
-
-    if (hoursSinceLastOpen < 24) return;
-
-    final prefs = await _notificationRepo.getPreferences(userId);
+    final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled) return;
 
-    final notification = ScheduledNotification()
+    final n = ScheduledNotification()
       ..userId = userId
       ..type = NotificationType.dailyCheckIn
-      ..scheduledTime = now
-      ..title = 'We Miss You! 👋'
-      ..body = 'How are you doing? Check in to maintain your progress.'
-      ..payload = _createPayload({'type': 'check_in_reminder'});
+      ..scheduledTime = DateTime.now()
+      ..title = 'We miss you! 👋'
+      ..body = "How are you doing? Check in to keep your progress safe."
+      ..payload = _payload({'type': 'check_in_reminder'});
 
-    final saved = await _notificationRepo.scheduleNotification(notification);
-
-    await _pushNotifications.showImmediateNotification(
+    final saved = await _repo.save(n);
+    await _push.showImmediate(
       id: saved.id,
-      title: notification.title,
-      body: notification.body,
-      payload: notification.payload,
+      title: saved.title,
+      body: saved.body,
+      payload: saved.payload,
     );
-
-    await _notificationRepo.markAsSent(saved.id);
+    await _repo.markSent(saved.id);
   }
 
-  // ============= HELPER METHODS =============
+  /// Schedule preventive notifications 15 minutes before historically risky hours.
+  Future<void> schedulePreventive(String userId) async {
+    final prefs = await _repo.getPreferences(userId);
+    if (!prefs.notificationsEnabled || !prefs.cravingTipsEnabled) return;
 
-  bool _shouldSendMilestone(dynamic stats) {
-    final streakDays = stats.currentStreak as int;
-    final milestones = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
-    return milestones.contains(streakDays);
-  }
-
-  bool _shouldSendProgressUpdate(dynamic stats) {
-    // Send weekly progress updates
-    final lastUpdate = DateTime.now().subtract(const Duration(days: 7));
-    return true; // Simplified - you'd check last sent time
-  }
-
-  // ============= RESCHEDULE ON PREFERENCES CHANGE =============
-
-  Future<void> onPreferencesChanged(String userId) async {
-    await scheduleNotifications(userId);
-  }
-
-  // ============= SMART TIMING BASED ON CRAVING PATTERNS =============
-
-  Future<List<int>> _predictHighRiskHours(String userId) async {
-    final logs = await _trackingRepo.getLogEntries(userId);
-
-    // Analyze when user typically has cravings
-    final hourCounts = <int, int>{};
-    for (final log in logs) {
-      if (log.type.name.contains('craving') || log.type.name.contains('relapse')) {
-        final hour = log.timestamp.hour;
-        hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
-      }
-    }
-
-    // Return top 3 high-risk hours
-    final sorted = hourCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return sorted.take(3).map((e) => e.key).toList();
-  }
-
-  /// Schedule preventive notifications before high-risk times
-  Future<void> schedulePreventiveNotifications(String userId) async {
-    final prefs = await _notificationRepo.getPreferences(userId);
-    if (!prefs.notificationsEnabled) return;
-
-    final highRiskHours = await _predictHighRiskHours(userId);
-    if (highRiskHours.isEmpty) return;
-
+    final highRiskHours = await _highRiskHours(userId);
     final now = DateTime.now();
 
     for (final hour in highRiskHours) {
-      // Schedule 15 minutes before high-risk time
-      var scheduledTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        hour,
-        0,
-      ).subtract(const Duration(minutes: 15));
+      var t = DateTime(now.year, now.month, now.day, hour)
+          .subtract(const Duration(minutes: 15));
+      if (t.isBefore(now)) t = t.add(const Duration(days: 1));
+      if (prefs.isInQuietHours(t)) continue;
 
-      if (scheduledTime.isBefore(now)) {
-        scheduledTime = scheduledTime.add(const Duration(days: 1));
-      }
-
-      if (prefs.isInQuietHours(scheduledTime)) continue;
-
-      final notification = ScheduledNotification()
+      final n = ScheduledNotification()
         ..userId = userId
         ..type = NotificationType.cravingTip
-        ..scheduledTime = scheduledTime
-        ..title = 'Stay Strong 💪'
-        ..body = 'This is typically a challenging time. You\'ve got this! Try a breathing exercise if needed.'
-        ..payload = _createPayload({'type': 'preventive', 'action': 'open_toolkit'});
+        ..scheduledTime = t
+        ..title = 'Stay strong 💪'
+        ..body =
+            "This is typically a challenging time. Try a breathing exercise if needed."
+        ..payload = _payload({'type': 'preventive', 'action': 'open_toolkit'});
 
-      final saved = await _notificationRepo.scheduleNotification(notification);
-
-      await _pushNotifications.scheduleNotification(
+      final saved = await _repo.save(n);
+      await _push.scheduleNotification(
         id: saved.id,
-        title: notification.title,
-        body: notification.body,
-        scheduledTime: scheduledTime,
-        payload: notification.payload,
+        title: saved.title,
+        body: saved.body,
+        scheduledTime: t,
+        payload: saved.payload,
       );
     }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  static const _milestones = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
+
+  bool _isMilestoneDay(dynamic stats) =>
+      _milestones.contains((stats.currentStreak as num?)?.toInt() ?? 0);
+
+  String _milestoneMessage(int days) => switch (days) {
+    1 => "You made it through the first day! That's huge!",
+    3 => "Three days strong! You're building momentum!",
+    7 => "One week! Your body is already healing!",
+    14 => "Two weeks! You're crushing it!",
+    21 => "Three weeks! New habits are forming!",
+    30 => "One month! This is a major achievement!",
+    60 => "Two months! You're unstoppable!",
+    90 => "Three months! You've transformed your life!",
+    180 => "Six months! You're an inspiration!",
+    365 => "One YEAR! You're a legend!",
+    _ => "Amazing streak! Keep going!",
+  };
+
+  Future<List<int>> _highRiskHours(String userId) async {
+    final logs = await _trackingRepo.getLogEntries(userId);
+    final counts = <int, int>{};
+
+    for (final log in logs) {
+      final typeName = log.type.name.toLowerCase();
+      if (typeName.contains('craving') || typeName.contains('relapse')) {
+        final h = log.timestamp.hour;
+        counts[h] = (counts[h] ?? 0) + 1;
+      }
+    }
+
+    final sorted = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.take(3).map((e) => e.key).toList();
   }
 }

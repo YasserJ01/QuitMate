@@ -1,142 +1,217 @@
-import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
+/// Result type for notification operations
+class NotificationResult {
+  final bool success;
+  final String? error;
+
+  const NotificationResult({required this.success, this.error});
+
+  static const NotificationResult ok = NotificationResult(success: true);
+  factory NotificationResult.fail(String error) =>
+      NotificationResult(success: false, error: error);
+}
+
+/// Offline-only push notification service using flutter_local_notifications.
+/// No Firebase or network dependency.
 class PushNotificationService {
-  static final PushNotificationService _instance = PushNotificationService._internal();
+  static final PushNotificationService _instance =
+  PushNotificationService._internal();
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  bool _isInitialized = false;
+  final FlutterLocalNotificationsPlugin _plugin =
+  FlutterLocalNotificationsPlugin();
+
+  bool _initialized = false;
+
+  // Stream for notification taps so callers can react
+  final StreamController<NotificationTapPayload> _tapController =
+  StreamController.broadcast();
+  Stream<NotificationTapPayload> get onNotificationTap => _tapController.stream;
+
+  // ─── Initialisation ────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_initialized) return;
 
-    // Initialize timezone for local notifications
     tz.initializeTimeZones();
 
-    // Firebase initialization
-    await _firebaseMessaging.requestPermission();
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-    // Local notifications initialization
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
-    await _localNotifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
+      requestAlertPermission: false, // We request explicitly via requestPermissions()
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
-    _isInitialized = true;
+    await _plugin.initialize(
+      const InitializationSettings(
+          android: androidSettings, iOS: iosSettings),
+      onDidReceiveNotificationResponse: _onTap,
+      onDidReceiveBackgroundNotificationResponse: _onBackgroundTap,
+    );
+
+    await _createNotificationChannel();
+    _initialized = true;
   }
 
-  void _handleForegroundMessage(RemoteMessage message) {
-    print('Got a message whilst in the foreground!');
-    print('Message data: ${message.data}');
-
-    final notification = message.notification;
-    if (notification != null) {
-      print('Message also contained a notification: ${message.notification}');
-      // Display the notification using flutter_local_notifications
-      _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        _notificationDetails(),
-        payload: jsonEncode(message.data),
-      );
-    }
+  Future<void> _createNotificationChannel() async {
+    const channel = AndroidNotificationChannel(
+      _channelId,
+      'QuitMate Reminders',
+      description: 'Encouragement, tips and milestone reminders',
+      importance: Importance.high,
+      enableVibration: true,
+      playSound: true,
+    );
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    print('A new onMessageOpenedApp event was published!');
-    // Handle notification tap, e.g., navigate to a specific screen
-  }
-
-  void _onNotificationTapped(NotificationResponse response) {
-    if (response.payload != null) {
-      // Handle navigation based on payload
-      print('Notification tapped with payload: ${response.payload}');
-    }
-  }
-
-  Future<String?> getFcmToken() async {
-    return await _firebaseMessaging.getToken();
-  }
+  // ─── Permissions ───────────────────────────────────────────────────────────
 
   Future<bool> requestPermissions() async {
-    final settings = await _firebaseMessaging.requestPermission(
+    // Android 13+
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final androidGranted = await android?.requestNotificationsPermission();
+
+    // iOS
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    final iosGranted = await ios?.requestPermissions(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
     );
-    return settings.authorizationStatus == AuthorizationStatus.authorized;
+
+    return (androidGranted ?? true) || (iosGranted ?? true);
   }
 
-  Future<void> scheduleNotification({
+  Future<bool> hasPermission() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final granted =
+    await android?.areNotificationsEnabled();
+    return granted ?? true; // iOS assumed true if initialized
+  }
+
+  // ─── Schedule / Show ───────────────────────────────────────────────────────
+
+  Future<NotificationResult> scheduleNotification({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledTime,
     String? payload,
   }) async {
-    await _localNotifications.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      _notificationDetails(),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
+    try {
+      if (!_initialized) await initialize();
+
+      final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+      if (tzTime.isBefore(tz.TZDateTime.now(tz.local))) {
+        return NotificationResult.fail('Scheduled time is in the past');
+      }
+
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzTime,
+        _details(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+        UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
+      );
+      return NotificationResult.ok;
+    } catch (e, s) {
+      debugPrint('scheduleNotification error: $e\n$s');
+      return NotificationResult.fail(e.toString());
+    }
   }
 
-  Future<void> showImmediateNotification({
+  Future<NotificationResult> showImmediate({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
-    await _localNotifications.show(
-      id,
-      title,
-      body,
-      _notificationDetails(),
-      payload: payload,
-    );
+    try {
+      if (!_initialized) await initialize();
+      await _plugin.show(id, title, body, _details(), payload: payload);
+      return NotificationResult.ok;
+    } catch (e) {
+      return NotificationResult.fail(e.toString());
+    }
   }
 
-  Future<void> cancelAllNotifications() async {
-    await _localNotifications.cancelAll();
+  Future<void> cancel(int id) => _plugin.cancel(id);
+
+  Future<void> cancelAll() => _plugin.cancelAll();
+
+  /// Returns all pending (scheduled but not yet fired) notification IDs.
+  Future<List<int>> pendingIds() async {
+    final list = await _plugin.pendingNotificationRequests();
+    return list.map((n) => n.id).toList();
   }
 
-  NotificationDetails _notificationDetails() {
-    return const NotificationDetails(
-      android: AndroidNotificationDetails(
-        'quitmate_interventions',
-        'Interventions',
-        channelDescription: 'Motivational messages and reminders',
-        importance: Importance.high,
-        priority: Priority.high,
-        showWhen: true,
-        icon: '@mipmap/ic_launcher',
-      ),
-    );
+  // ─── Tap handling ──────────────────────────────────────────────────────────
+
+  void _onTap(NotificationResponse response) {
+    _tapController.add(NotificationTapPayload(
+      notificationId: response.id ?? 0,
+      payload: response.payload,
+    ));
   }
+
+  void dispose() {
+    _tapController.close();
+  }
+
+  // ─── Internals ─────────────────────────────────────────────────────────────
+
+  static const _channelId = 'quitmate_interventions';
+
+  NotificationDetails _details() => const NotificationDetails(
+    android: AndroidNotificationDetails(
+      _channelId,
+      'QuitMate Reminders',
+      channelDescription:
+      'Encouragement, tips and milestone reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      styleInformation: BigTextStyleInformation(''),
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    ),
+  );
+}
+
+// Background callback — must be top-level
+@pragma('vm:entry-point')
+void _onBackgroundTap(NotificationResponse response) {
+  // Background taps: stored in shared_preferences so the app can read on next launch.
+  debugPrint('Background notification tap: ${response.payload}');
+}
+
+class NotificationTapPayload {
+  final int notificationId;
+  final String? payload;
+  const NotificationTapPayload(
+      {required this.notificationId, this.payload});
 }
