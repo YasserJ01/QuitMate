@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quitmate/features/interventions/presentation/screens/Notifications_permissions_banner.dart';
+import 'package:quitmate/features/interventions/presentation/screens/notifications_settings_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
 import '../../../relapse_prevention/presentation/screens/relapse_plan_screen.dart';
 import '../../../relapse_prevention/presentation/widgets/panic_button.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
+import '../../../interventions/presentation/providers/notification_provider.dart';
 import '../../data/models/log_entry.dart';
 import '../providers/statistics_provider.dart';
 import '../providers/tracking_provider.dart';
@@ -19,7 +22,7 @@ import 'log_history_screen.dart';
 import 'detailed_stats_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -29,11 +32,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Refresh statistics on screen load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(statisticsProvider.notifier).refresh();
+      _checkMilestones();
     });
   }
+
+  // ─── Milestone & inactivity hooks ──────────────────────────────────────────
+
+  /// Fires streak-milestone and inactivity notifications when appropriate.
+  /// Called once per cold start — cheap (two DB reads).
+  Future<void> _checkMilestones() async {
+    final managerAsync = ref.read(notificationManagerProvider);
+    final manager = managerAsync.valueOrNull;
+    if (manager == null) return;
+
+    final userId = await ref.read(currentUserIdProvider.future);
+    if (userId == null) return;
+
+    // Streak milestone check
+    final stats = ref.read(statisticsProvider).statistics;
+    final streak = stats.currentStreak;
+    if (streak > 0) {
+      await manager.onStreakMilestone(userId, streak);
+    }
+
+    // Inactivity check (uses current time as proxy — real apps store last-open timestamp)
+    // Replace DateTime.now().subtract(...) with your stored lastOpenedAt if available.
+    final lastOpened =
+    DateTime.now().subtract(const Duration(hours: 25)); // placeholder
+    await manager.onInactivityDetected(userId, lastOpened);
+  }
+
+  // ─── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -46,67 +77,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            tooltip: 'View History',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LogHistoryScreen(),
-                ),
-              );
-            },
+            tooltip: 'History',
+            onPressed: () => _push(context, const LogHistoryScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
-            tooltip: 'Detailed Stats',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DetailedStatsScreen(),
-                ),
-              );
-            },
+            tooltip: 'Detailed stats',
+            onPressed: () => _push(context, const DetailedStatsScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.self_improvement),
-            tooltip: 'Craving Toolkit',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CravingToolkitScreen(),
-                ),
-              );
-            },
+            tooltip: 'Craving toolkit',
+            onPressed: () => _push(context, const CravingToolkitScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.shield),
-            tooltip: 'Relapse Plan',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RelapsePlanScreen(),
-                ),
-              );
-            },
+            tooltip: 'Relapse plan',
+            onPressed: () => _push(context, const RelapsePlanScreen()),
           ),
+          // ── Notification settings entry point ──────────────────────────
           IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: () {
-              // TODO: Navigate to settings
-            },
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'Notification settings',
+            onPressed: () =>
+                _push(context, const NotificationSettingsScreen()),
           ),
         ],
       ),
       body: userIdAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
         data: (userId) {
           if (userId == null) {
-            return const Center(
-              child: Text('Please complete onboarding first'),
-            );
+            return const Center(child: Text('Please complete onboarding'));
           }
 
           if (statsState.isLoading) {
@@ -114,123 +117,146 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           }
 
           if (statsState.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: AppTheme.errorColor),
-                  const SizedBox(height: 16),
-                  Text(statsState.error!),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      ref.read(statisticsProvider.notifier).refresh();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+            return _ErrorBody(
+              message: statsState.error!,
+              onRetry: () =>
+                  ref.read(statisticsProvider.notifier).refresh(),
             );
           }
 
           return RefreshIndicator(
-            onRefresh: () async {
-              ref.read(statisticsProvider.notifier).refresh();
-            },
+            onRefresh: () async =>
+                ref.read(statisticsProvider.notifier).refresh(),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Welcome message
-                _buildWelcomeSection(),
+                const NotificationPermissionBanner(),
+                const SizedBox(height: 8),
+                _WelcomeSection(userId: userId),
                 const SizedBox(height: 24),
-
-                // Streak card
                 StreakCard(statistics: statsState.statistics),
                 const SizedBox(height: 16),
-
-                // Quick stats summary
                 StatsSummaryCard(statistics: statsState.statistics),
                 const SizedBox(height: 16),
-
-                // Savings card (smoking only)
-                if (statsState.statistics.potentialMoneySaved > 0)
+                if (statsState.statistics.potentialMoneySaved > 0) ...[
                   SavingsCard(statistics: statsState.statistics),
-
-                if (statsState.statistics.potentialMoneySaved > 0)
                   const SizedBox(height: 16),
-
-                // Health metrics
-                if (statsState.statistics.cigarettesAvoided > 0)
+                ],
+                if (statsState.statistics.cigarettesAvoided > 0) ...[
                   HealthMetricsCard(statistics: statsState.statistics),
-
-                if (statsState.statistics.cigarettesAvoided > 0)
                   const SizedBox(height: 16),
-
-                // Chart preview
+                ],
                 ChartCard(statistics: statsState.statistics),
                 const SizedBox(height: 16),
-
-                // Recent activity
-                _buildRecentActivitySection(),
-
-                const SizedBox(height: 80), // Space for FAB
+                _RecentActivitySection(userId: userId),
+                const SizedBox(height: 96), // clearance for two FABs
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Error: $error'),
-        ),
       ),
-      floatingActionButton: Stack(
-        children: [
-          Positioned(
-            bottom: 80, // Position QuickLogButton above PanicButton
-            right: 16,
-            child: const QuickLogButton(),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: const PanicButton(),
-          ),
-        ],
+      floatingActionButton: _Fabs(
+        onCravingLogged: () => _onCravingLogged(),
+        onCravingResisted: () => _onCravingResisted(),
+        onLogSuccess: () => _onLogSuccess(),
       ),
     );
   }
 
-  Widget _buildWelcomeSection() {
-    return FutureBuilder(
-      future: _getProfileName(),
-      builder: (context, snapshot) {
-        final name = snapshot.data ?? 'there';
-        final timeOfDay = _getTimeOfDay();
+  // ─── Notification event hooks ───────────────────────────────────────────────
 
+  Future<void> _onCravingLogged() async {
+    final userId = await ref.read(currentUserIdProvider.future);
+    if (userId == null) return;
+    ref.read(notificationManagerProvider).whenData(
+          (m) => m.onCravingLogged(userId),
+    );
+  }
+
+  Future<void> _onCravingResisted() async {
+    final userId = await ref.read(currentUserIdProvider.future);
+    if (userId == null) return;
+    ref.read(notificationManagerProvider).whenData(
+          (m) => m.onCravingResisted(userId),
+    );
+  }
+
+  void _onLogSuccess() {
+    ref.read(statisticsProvider.notifier).refresh();
+    ref.invalidate(todaysLogsProvider);
+  }
+
+  void _push(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+}
+
+// ─── Welcome section ──────────────────────────────────────────────────────────
+
+class _WelcomeSection extends ConsumerWidget {
+  final String userId;
+  const _WelcomeSection({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<String>(
+      future: _resolveName(ref),
+      builder: (context, snap) {
+        final name = snap.data ?? 'there';
+        final tod = _timeOfDay();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Good $timeOfDay, $name!',
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
+            Text('Good $tod, $name!',
+                style: Theme.of(context).textTheme.displaySmall),
             const SizedBox(height: 4),
-            Text(
-              'Keep up the great work!',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
+            Text('Keep up the great work!',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.textSecondary,
+                )),
           ],
         );
       },
     );
   }
 
-  Widget _buildRecentActivitySection() {
+  Future<String> _resolveName(WidgetRef ref) async {
+    final repo = ref.read(profileRepositoryProvider);
+    final profile = await repo.getProfile(userId);
+    return profile?.nickname ?? 'there';
+  }
+
+  String _timeOfDay() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    return 'evening';
+  }
+}
+
+// ─── Recent activity section ──────────────────────────────────────────────────
+
+class _RecentActivitySection extends ConsumerWidget {
+  final String userId;
+  const _RecentActivitySection({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final todaysLogs = ref.watch(todaysLogsProvider);
 
     return todaysLogs.when(
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (e, _) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text('Error: $e'),
+        ),
+      ),
       data: (logs) {
         if (logs.isEmpty) {
           return Card(
@@ -238,23 +264,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 48,
-                    color: AppTheme.successColor.withOpacity(0.5),
-                  ),
+                  Icon(Icons.check_circle_outline,
+                      size: 48,
+                      color: AppTheme.successColor.withOpacity(0.5)),
                   const SizedBox(height: 12),
-                  Text(
-                    'No activity today',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('No activity today',
+                      style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 4),
-                  Text(
-                    'Keep it up!',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
+                  Text('Keep it up!',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textSecondary,
+                      )),
                 ],
               ),
             ),
@@ -270,20 +290,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Today\'s Activity',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    Text("Today's activity",
+                        style: Theme.of(context).textTheme.titleLarge),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LogHistoryScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('View All'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const LogHistoryScreen()),
+                      ),
+                      child: const Text('View all'),
                     ),
                   ],
                 ),
@@ -293,24 +308,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: logs.length > 3 ? 3 : logs.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final log = logs[index];
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final log = logs[i];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: _getLogTypeColor(log.type).withOpacity(0.1),
-                      child: Text(
-                        log.type.emoji,
-                        style: const TextStyle(fontSize: 20),
-                      ),
+                      backgroundColor:
+                      _logColor(log.type).withOpacity(0.1),
+                      child: Text(log.type.emoji,
+                          style: const TextStyle(fontSize: 20)),
                     ),
                     title: Text(log.type.displayName),
                     subtitle: Text(log.formattedTime),
                     trailing: log.mood != null
-                        ? Text(
-                            log.mood!.emoji,
-                            style: const TextStyle(fontSize: 20),
-                          )
+                        ? Text(log.mood!.emoji,
+                        style: const TextStyle(fontSize: 20))
                         : null,
                   );
                 },
@@ -319,48 +331,69 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         );
       },
-      loading: () => const Card(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-      error: (error, stack) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text('Error loading activity: $error'),
-        ),
-      ),
     );
   }
 
-  Future<String?> _getProfileName() async {
-    final userId = await ref.read(currentUserIdProvider.future);
-    if (userId == null) return 'there';
+  Color _logColor(LogType type) => switch (type) {
+    LogType.cigarette => AppTheme.errorColor,
+    LogType.episode => AppTheme.warningColor,
+    LogType.craving => AppTheme.primaryColor,
+    LogType.relapse => AppTheme.errorColor,
+  };
+}
 
-    final profileRepo = ref.read(profileRepositoryProvider);
-    final profile = await profileRepo.getProfile(userId);
+// ─── FABs ─────────────────────────────────────────────────────────────────────
 
-    return profile?.nickname ?? 'there';
+class _Fabs extends StatelessWidget {
+  final VoidCallback onCravingLogged;
+  final VoidCallback onCravingResisted;
+  final VoidCallback onLogSuccess;
+
+  const _Fabs({
+    required this.onCravingLogged,
+    required this.onCravingResisted,
+    required this.onLogSuccess,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        QuickLogButton(
+          onCravingLogged: onCravingLogged,
+          onCravingResisted: onCravingResisted,
+          onLogSuccess: onLogSuccess,
+        ),
+        const SizedBox(height: 16),
+        const PanicButton(),
+      ],
+    );
   }
+}
 
-  String _getTimeOfDay() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
-  }
+// ─── Error body ───────────────────────────────────────────────────────────────
 
-  Color _getLogTypeColor(LogType type) {
-    switch (type) {
-      case LogType.cigarette:
-        return AppTheme.errorColor;
-      case LogType.episode:
-        return AppTheme.warningColor;
-      case LogType.craving:
-        return AppTheme.primaryColor;
-      case LogType.relapse:
-        return AppTheme.errorColor;
-    }
+class _ErrorBody extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorBody({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline,
+              size: 48, color: AppTheme.errorColor),
+          const SizedBox(height: 16),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
   }
 }

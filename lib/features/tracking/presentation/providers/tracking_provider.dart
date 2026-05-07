@@ -141,6 +141,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
     MoodType? mood,
   }) async {
     try {
+      if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
       final entry = LogEntry()
@@ -152,6 +153,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final saved = await _repository.addLogEntry(entry);
 
+      if (!mounted) return true;
       state = state.copyWith(
         isLogging: false,
         lastLog: saved,
@@ -159,6 +161,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       return true;
     } catch (e) {
+      if (!mounted) return false;
       state = state.copyWith(
         isLogging: false,
         error: 'Failed to log: $e',
@@ -174,6 +177,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
     int? durationSeconds,
   }) async {
     try {
+      if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
       final entry = LogEntry()
@@ -185,6 +189,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final saved = await _repository.addLogEntry(entry);
 
+      if (!mounted) return true;
       state = state.copyWith(
         isLogging: false,
         lastLog: saved,
@@ -192,6 +197,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       return true;
     } catch (e) {
+      if (!mounted) return false;
       state = state.copyWith(
         isLogging: false,
         error: 'Failed to log: $e',
@@ -206,6 +212,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
     List<String>? triggers,
   }) async {
     try {
+      if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
       final entry = LogEntry()
@@ -216,10 +223,12 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       await _repository.addLogEntry(entry);
 
+      if (!mounted) return true;
       state = state.copyWith(isLogging: false);
 
       return true;
     } catch (e) {
+      if (!mounted) return false;
       state = state.copyWith(
         isLogging: false,
         error: 'Failed to log: $e',
@@ -241,6 +250,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       return await _repository.addCravingEntry(entry);
     } catch (e) {
+      if (!mounted) return null;
       state = state.copyWith(error: 'Failed to start tracking: $e');
       return null;
     }
@@ -267,18 +277,20 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       await _repository.updateCravingEntry(entry);
       return true;
     } catch (e) {
+      if (!mounted) return false;
       state = state.copyWith(error: 'Failed to end tracking: $e');
       return false;
     }
   }
 
   void clearError() {
+    if (!mounted) return;
     state = state.copyWith(error: null);
   }
 }
 
 final quickLogProvider =
-    StateNotifierProvider.autoDispose<QuickLogNotifier, QuickLogState>(
+    StateNotifierProvider<QuickLogNotifier, QuickLogState>(
   (ref) {
     final repository = ref.watch(trackingRepositoryProvider);
     final userIdAsync = ref.watch(currentUserIdProvider);

@@ -59,10 +59,9 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.2.1
   fl_chart: ^0.65.0  # For graphs/charts
-  firebase_core: ^3.1.1
-  firebase_messaging: ^15.0.2
   flutter_local_notifications: ^17.2.2   # local scheduling, works offline
   timezone: ^0.9.4                        # required by flutter_local_notifications
+  flutter_timezone: ^5.0.2      # resolves device IANA timezone name at runtime
 
 
 
