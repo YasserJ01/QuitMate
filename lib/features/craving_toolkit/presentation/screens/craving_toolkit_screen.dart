@@ -13,9 +13,9 @@ class CravingToolkitScreen extends ConsumerWidget {
   final int? cravingId;
 
   const CravingToolkitScreen({
-    Key? key,
+    super.key,
     this.cravingId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -136,7 +136,7 @@ class CravingToolkitScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -179,10 +179,10 @@ class CravingToolkitScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withOpacity(0.1),
+        color: AppTheme.warningColor.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.warningColor.withOpacity(0.3),
+          color: AppTheme.warningColor.withValues(alpha:0.3),
           width: 1,
         ),
       ),
@@ -232,7 +232,7 @@ class CravingToolkitScreen extends ConsumerWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -397,7 +397,7 @@ class CravingToolkitScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  backgroundColor: AppTheme.primaryColor.withValues(alpha:0.1),
                   child: Text(pattern.emoji, style: const TextStyle(fontSize: 20)),
                 ),
                 title: Text(pattern.displayName),
@@ -469,7 +469,7 @@ class CravingToolkitScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.successColor.withOpacity(0.1),
+                  backgroundColor: AppTheme.successColor.withValues(alpha:0.1),
                   child: Text(technique.emoji, style: const TextStyle(fontSize: 20)),
                 ),
                 title: Text(technique.displayName),
@@ -545,7 +545,7 @@ class CravingToolkitScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.warningColor.withOpacity(0.1),
+                  backgroundColor: AppTheme.warningColor.withValues(alpha:0.1),
                   child: Text(exercise.emoji, style: const TextStyle(fontSize: 20)),
                 ),
                 title: Text(exercise.displayName),

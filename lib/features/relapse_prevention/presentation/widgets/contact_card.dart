@@ -9,11 +9,11 @@ class ContactCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const ContactCard({
-    Key? key,
+    super.key,
     required this.contact,
     required this.onEdit,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,7 @@ class ContactCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+          backgroundColor: AppTheme.primaryColor.withValues(alpha:0.1),
           radius: 28,
           child: Text(
             contact.name[0].toUpperCase(),
@@ -75,7 +75,7 @@ class ContactCard extends StatelessWidget {
               Text(
                 contact.notes!,
                 style: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.8),
+                  color: AppTheme.textSecondary.withValues(alpha:0.8),
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
                 ),

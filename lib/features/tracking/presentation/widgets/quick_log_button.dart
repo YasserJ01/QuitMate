@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/craving_entry.dart';
+import '../../data/models/log_entry.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../onboarding/domain/entities/goal_type.dart';
+import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 import '../providers/tracking_provider.dart';
+import '../screens/lapse_recovery_screen.dart';
 
 /// Floating action button that expands into quick-log options.
-///
-/// [onCravingLogged] and [onCravingResisted] are optional callbacks so the
-/// parent (dashboard) can fire the notification event hooks without this
-/// widget needing to know about the notification system directly.
-///
-/// [onLogSuccess] is called after any successful log action so the parent
-/// can refresh its data providers.
+/// Mode-aware: shows different actions based on goalType.
 class QuickLogButton extends ConsumerStatefulWidget {
   final VoidCallback? onCravingLogged;
   final VoidCallback? onCravingResisted;
@@ -66,24 +64,28 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
     if (_isOpen) _toggle();
   }
 
-  // ── Log actions ──────────────────────────────────────────────────────────
-
   Future<void> _logCigarette() async {
     _close();
-    final ok =
-    await ref.read(quickLogProvider.notifier).logCigarette();
-    if (ok && mounted) {
-      _showSnack('Cigarette logged', Icons.smoking_rooms);
+    final ok = await ref.read(quickLogProvider.notifier).logCigarette();
+    if (ok && context.mounted) {
       widget.onLogSuccess?.call();
+      // Navigate to lapse recovery screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              LapseRecoveryScreen(lapseType: LogType.cigaretteSmoked),
+        ),
+      );
     }
   }
 
   Future<void> _logCraving() async {
     _close();
     final ok = await ref.read(quickLogProvider.notifier).logCraving(
-      intensity: CravingIntensity.moderate,
-    );
-    if (ok && mounted) {
+          intensity: CravingIntensity.moderate,
+        );
+    if (ok && context.mounted) {
       _showSnack('Craving logged', Icons.flash_on);
       widget.onCravingLogged?.call();
       widget.onLogSuccess?.call();
@@ -93,9 +95,9 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
   Future<void> _logResisted() async {
     _close();
     final ok = await ref.read(quickLogProvider.notifier).logCraving(
-      intensity: CravingIntensity.mild,
-    );
-    if (ok && mounted) {
+          intensity: CravingIntensity.mild,
+        );
+    if (ok && context.mounted) {
       _showSnack('Craving resisted! 💪', Icons.check_circle_outline,
           color: AppTheme.successColor);
       widget.onCravingResisted?.call();
@@ -106,8 +108,35 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
   Future<void> _logEpisode() async {
     _close();
     final ok = await ref.read(quickLogProvider.notifier).logEpisode();
-    if (ok && mounted) {
-      _showSnack('Episode logged', Icons.calendar_today);
+    if (ok && context.mounted) {
+      widget.onLogSuccess?.call();
+      // Navigate to lapse recovery screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              LapseRecoveryScreen(lapseType: LogType.urgeEpisode),
+        ),
+      );
+    }
+  }
+
+  Future<void> _logDelayed() async {
+    _close();
+    final userId = await ref.read(currentUserIdProvider.future);
+    if (userId == null) return;
+
+    final entry = LogEntry()
+      ..userId = userId
+      ..type = LogType.cravingDelayed
+      ..timestamp = DateTime.now().toUtc();
+
+    final repo = ref.read(trackingRepositoryProvider);
+    await repo.addLogEntry(entry);
+
+    if (mounted) {
+      _showSnack('Craving delayed! ⏰', Icons.access_time,
+          color: AppTheme.successColor);
       widget.onLogSuccess?.call();
     }
   }
@@ -126,13 +155,10 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
-
-  // ── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -140,45 +166,19 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // ── Expanded options ─────────────────────────────────────────────
+        // Expanded options — mode-aware
         ScaleTransition(
           scale: _expandAnim,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _MiniFab(
-                label: 'Log cigarette',
-                icon: Icons.smoking_rooms,
-                color: AppTheme.errorColor,
-                onTap: _logCigarette,
-              ),
-              const SizedBox(height: 8),
-              _MiniFab(
-                label: 'Log craving',
-                icon: Icons.flash_on,
-                color: AppTheme.warningColor,
-                onTap: _logCraving,
-              ),
-              const SizedBox(height: 8),
-              _MiniFab(
-                label: 'Resisted!',
-                icon: Icons.check_circle_outline,
-                color: AppTheme.successColor,
-                onTap: _logResisted,
-              ),
-              const SizedBox(height: 8),
-              _MiniFab(
-                label: 'Log episode',
-                icon: Icons.calendar_today,
-                color: AppTheme.primaryColor,
-                onTap: _logEpisode,
-              ),
-              const SizedBox(height: 8),
-            ],
+          child: _ModeAwareFabs(
+            onCigarette: _logCigarette,
+            onEpisode: _logEpisode,
+            onCraving: _logCraving,
+            onResisted: _logResisted,
+            onDelayed: _logDelayed,
           ),
         ),
 
-        // ── Main FAB ────────────────────────────────────────────────────
+        // Main FAB
         RotationTransition(
           turns: _rotateAnim,
           child: FloatingActionButton(
@@ -193,7 +193,104 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
   }
 }
 
-// ── Mini FAB row ─────────────────────────────────────────────────────────────
+/// Mode-aware mini FABs — shows different actions per goal type.
+class _ModeAwareFabs extends ConsumerWidget {
+  final VoidCallback onCigarette;
+  final VoidCallback onEpisode;
+  final VoidCallback onCraving;
+  final VoidCallback onResisted;
+  final VoidCallback onDelayed;
+
+  const _ModeAwareFabs({
+    required this.onCigarette,
+    required this.onEpisode,
+    required this.onCraving,
+    required this.onResisted,
+    required this.onDelayed,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userIdAsync = ref.watch(currentUserIdProvider);
+
+    return userIdAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => _buildSmokingActions(), // default
+      data: (userId) {
+        if (userId == null) return _buildSmokingActions();
+        // Read profile synchronously isn't possible; use a future builder
+        return FutureBuilder<GoalType>(
+          future: _getGoalType(ref, userId),
+          builder: (context, snapshot) {
+            final goalType = snapshot.data ?? GoalType.quitSmoking;
+            return switch (goalType) {
+              GoalType.quitSmoking => _buildSmokingActions(),
+              GoalType.reduceMasturbation => _buildReductionActions(),
+            };
+          },
+        );
+      },
+    );
+  }
+
+  Future<GoalType> _getGoalType(WidgetRef ref, String userId) async {
+    final repo = ref.read(profileRepositoryProvider);
+    final profile = await repo.getProfile(userId);
+    return profile?.goalType ?? GoalType.quitSmoking;
+  }
+
+  Widget _buildSmokingActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _MiniFab(
+            label: 'Log cigarette',
+            icon: Icons.smoking_rooms,
+            color: AppTheme.errorColor,
+            onTap: onCigarette),
+        const SizedBox(height: 8),
+        _MiniFab(
+            label: 'Craving',
+            icon: Icons.flash_on,
+            color: AppTheme.warningColor,
+            onTap: onCraving),
+        const SizedBox(height: 8),
+        _MiniFab(
+            label: 'Delayed!',
+            icon: Icons.access_time,
+            color: AppTheme.successColor,
+            onTap: onDelayed),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildReductionActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _MiniFab(
+            label: 'Log episode',
+            icon: Icons.warning_amber_rounded,
+            color: AppTheme.warningColor,
+            onTap: onEpisode),
+        const SizedBox(height: 8),
+        _MiniFab(
+            label: 'Craving',
+            icon: Icons.flash_on,
+            color: AppTheme.warningColor,
+            onTap: onCraving),
+        const SizedBox(height: 8),
+        _MiniFab(
+            label: 'Urge resisted!',
+            icon: Icons.check_circle_outline,
+            color: AppTheme.successColor,
+            onTap: onResisted),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
 
 class _MiniFab extends StatelessWidget {
   final String label;
@@ -213,7 +310,6 @@ class _MiniFab extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Label chip
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -221,17 +317,15 @@ class _MiniFab extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha:0.12),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Text(label,
-              style: Theme.of(context).textTheme.labelMedium),
+          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
         ),
         const SizedBox(width: 8),
-        // Icon button
         FloatingActionButton.small(
           heroTag: label,
           onPressed: onTap,

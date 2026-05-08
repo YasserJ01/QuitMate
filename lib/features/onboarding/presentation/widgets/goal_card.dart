@@ -5,25 +5,16 @@ import '../../domain/entities/goal_type.dart';
 class GoalCard extends StatelessWidget {
   final GoalType goalType;
   final bool isSelected;
+  final bool isExpanded;
   final VoidCallback onTap;
 
   const GoalCard({
-    Key? key,
+    super.key,
     required this.goalType,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
-
-  String _getDescription() {
-    switch (goalType) {
-      case GoalType.quitSmoking:
-        return 'Break free from nicotine addiction and improve your health';
-      case GoalType.reduceMasturbation:
-        return 'Build healthier habits and improve self-control';
-      case GoalType.both:
-        return 'Take on both challenges for complete transformation';
-    }
-  }
+    this.isExpanded = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +40,8 @@ class GoalCard extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.grey.withOpacity(0.1),
+                      ? AppTheme.primaryColor.withValues(alpha:0.1)
+                      : Colors.grey.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -70,17 +61,27 @@ class GoalCard extends StatelessWidget {
                     Text(
                       goalType.displayName,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: isSelected
-                            ? AppTheme.primaryColor
-                            : AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _getDescription(),
+                      goalType.shortDescription,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    // Extended description shown on first tap
+                    if (isExpanded) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        goalType.extendedDescription,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
               ),

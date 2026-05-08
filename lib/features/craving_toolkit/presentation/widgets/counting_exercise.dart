@@ -4,8 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 class CountingExercise extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
-  const CountingExercise({Key? key, required this.onComplete})
-    : super(key: key);
+  const CountingExercise({super.key, required this.onComplete});
 
   @override
   State<CountingExercise> createState() => _CountingExerciseState();
@@ -81,7 +80,7 @@ class _CountingExerciseState extends State<CountingExercise> {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withOpacity(0.1),
+                color: AppTheme.warningColor.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: AppTheme.warningColor, width: 3),
               ),
@@ -237,7 +236,7 @@ class _CountingExerciseState extends State<CountingExercise> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withOpacity(0.1),
+                color: AppTheme.warningColor.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -307,9 +306,9 @@ class _CountingExerciseState extends State<CountingExercise> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withOpacity(0.08),
+        color: AppTheme.warningColor.withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.warningColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.warningColor.withValues(alpha:0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

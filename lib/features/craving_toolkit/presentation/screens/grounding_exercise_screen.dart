@@ -15,10 +15,10 @@ class GroundingExerciseScreen extends ConsumerStatefulWidget {
   final int? cravingId;
 
   const GroundingExerciseScreen({
-    Key? key,
+    super.key,
     required this.exercise,
     this.cravingId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<GroundingExerciseScreen> createState() =>
@@ -43,13 +43,14 @@ class _GroundingExerciseScreenState
       },
     );
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (_hasStarted && !state.isCompleted) {
-          final shouldExit = await _showExitConfirmation();
-          return shouldExit ?? false;
+    return PopScope(
+      canPop: !(_hasStarted && !state.isCompleted),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _showExitConfirmation();
+        if (shouldExit == true && context.mounted) {
+          Navigator.pop(context);
         }
-        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -59,7 +60,7 @@ class _GroundingExerciseScreenState
             onPressed: () async {
               if (_hasStarted && !state.isCompleted) {
                 final shouldExit = await _showExitConfirmation();
-                if (shouldExit == true && mounted) {
+                if (shouldExit == true && context.mounted) {
                   Navigator.pop(context);
                 }
               } else {
@@ -114,7 +115,7 @@ class _GroundingExerciseScreenState
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.warningColor.withOpacity(0.1),
+              color: AppTheme.warningColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -305,7 +306,7 @@ class _GroundingExerciseScreenState
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withOpacity(0.1),
+                color: AppTheme.warningColor.withValues(alpha:0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -336,7 +337,7 @@ class _GroundingExerciseScreenState
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(

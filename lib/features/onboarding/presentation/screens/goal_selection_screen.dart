@@ -6,13 +6,22 @@ import 'package:quitmate/core/theme/app_theme.dart';
 import '../../domain/entities/goal_type.dart';
 import '../providers/onboarding_provider.dart';
 import '../widgets/goal_card.dart';
-import 'baseline_screen.dart';
+import 'smoking_profile_form_screen.dart';
+import 'reduction_profile_form_screen.dart';
 
-class GoalSelectionScreen extends ConsumerWidget {
-  const GoalSelectionScreen({Key? key}) : super(key: key);
+class GoalSelectionScreen extends ConsumerStatefulWidget {
+  const GoalSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GoalSelectionScreen> createState() =>
+      _GoalSelectionScreenState();
+}
+
+class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
+  GoalType? _expandedGoal;
+
+  @override
+  Widget build(BuildContext context) {
     final onboardingState = ref.watch(onboardingProvider);
 
     return Scaffold(
@@ -40,9 +49,19 @@ class GoalSelectionScreen extends ConsumerWidget {
                       color: AppTheme.textSecondary,
                     ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
 
-              // Goal Cards
+              // Personalization explanation line (US-ON03, BR-03)
+              Text(
+                'Your answers help personalize your dashboard and recommendations. All data stays on your device.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+              ),
+              const SizedBox(height: 24),
+
+              // Goal Cards — exactly 2 options, no pre-selection (BR-01, US-ON01)
               Expanded(
                 child: ListView(
                   children: [
@@ -50,10 +69,15 @@ class GoalSelectionScreen extends ConsumerWidget {
                       goalType: GoalType.quitSmoking,
                       isSelected:
                           onboardingState.goalType == GoalType.quitSmoking,
+                      isExpanded: _expandedGoal == GoalType.quitSmoking,
                       onTap: () {
-                        ref.read(onboardingProvider.notifier).setGoalType(
-                              GoalType.quitSmoking,
-                            );
+                        // First tap expands description; second tap confirms
+                        if (_expandedGoal != GoalType.quitSmoking) {
+                          setState(() => _expandedGoal = GoalType.quitSmoking);
+                        }
+                        ref
+                            .read(onboardingProvider.notifier)
+                            .setGoalType(GoalType.quitSmoking);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -61,20 +85,16 @@ class GoalSelectionScreen extends ConsumerWidget {
                       goalType: GoalType.reduceMasturbation,
                       isSelected: onboardingState.goalType ==
                           GoalType.reduceMasturbation,
+                      isExpanded:
+                          _expandedGoal == GoalType.reduceMasturbation,
                       onTap: () {
-                        ref.read(onboardingProvider.notifier).setGoalType(
-                              GoalType.reduceMasturbation,
-                            );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    GoalCard(
-                      goalType: GoalType.both,
-                      isSelected: onboardingState.goalType == GoalType.both,
-                      onTap: () {
-                        ref.read(onboardingProvider.notifier).setGoalType(
-                              GoalType.both,
-                            );
+                        if (_expandedGoal != GoalType.reduceMasturbation) {
+                          setState(() =>
+                              _expandedGoal = GoalType.reduceMasturbation);
+                        }
+                        ref
+                            .read(onboardingProvider.notifier)
+                            .setGoalType(GoalType.reduceMasturbation);
                       },
                     ),
                   ],
@@ -87,9 +107,13 @@ class GoalSelectionScreen extends ConsumerWidget {
                 child: ElevatedButton(
                   onPressed: onboardingState.goalType != null
                       ? () {
+                          final goal = onboardingState.goalType!;
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => const BaselineScreen(),
+                              builder: (context) => goal ==
+                                      GoalType.quitSmoking
+                                  ? const SmokingProfileFormScreen()
+                                  : const ReductionProfileFormScreen(),
                             ),
                           );
                         }

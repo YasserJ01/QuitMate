@@ -146,7 +146,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final entry = LogEntry()
         ..userId = _userId
-        ..type = LogType.cigarette
+        ..type = LogType.cigaretteSmoked
         ..quantity = quantity
         ..triggers = triggers ?? []
         ..mood = mood;
@@ -182,7 +182,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final entry = LogEntry()
         ..userId = _userId
-        ..type = LogType.episode
+        ..type = LogType.urgeEpisode
         ..triggers = triggers ?? []
         ..mood = mood
         ..durationSeconds = durationSeconds;
@@ -217,7 +217,7 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final entry = LogEntry()
         ..userId = _userId
-        ..type = LogType.craving
+        ..type = LogType.cravingLogged
         ..intensity = intensity.value
         ..triggers = triggers ?? [];
 
@@ -298,7 +298,7 @@ final quickLogProvider =
     return userIdAsync.when(
       data: (userId) => QuickLogNotifier(repository, userId ?? ''),
       loading: () => QuickLogNotifier(repository, ''),
-      error: (_, __) => QuickLogNotifier(repository, ''),
+      error: (_, _) => QuickLogNotifier(repository, ''),
     );
   },
 );

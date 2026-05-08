@@ -97,7 +97,7 @@ class _NotificationPermissionBannerState
                       'Get encouragement and craving tips even when the app is closed.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSecondaryContainer
-                            .withOpacity(0.8),
+                            .withValues(alpha:0.8),
                       ),
                     ),
                   ],

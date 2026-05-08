@@ -6,9 +6,9 @@ class BodyScanExercise extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const BodyScanExercise({
-    Key? key,
+    super.key,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<BodyScanExercise> createState() => _BodyScanExerciseState();
@@ -134,7 +134,7 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.warningColor.withOpacity(0.3),
+                              color: AppTheme.warningColor.withValues(alpha:0.3),
                               blurRadius: 20,
                               spreadRadius: 5,
                             ),
@@ -172,7 +172,7 @@ class _BodyScanExerciseState extends State<BodyScanExercise> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.warningColor.withOpacity(0.1),
+              color: AppTheme.warningColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -395,7 +395,7 @@ class BodyOutlinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.warningColor.withOpacity(0.2)
+      ..color = AppTheme.warningColor.withValues(alpha:0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
@@ -444,7 +444,7 @@ class BodyOutlinePainter extends CustomPainter {
     // Draw highlight glow
     final glowY = size.height * highlightPosition;
     final glowPaint = Paint()
-      ..color = AppTheme.warningColor.withOpacity(0.3)
+      ..color = AppTheme.warningColor.withValues(alpha:0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
 
     canvas.drawCircle(Offset(centerX, glowY), 40, glowPaint);

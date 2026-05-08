@@ -7,7 +7,7 @@ import '../providers/tracking_provider.dart';
 import '../providers/statistics_provider.dart';
 
 class LogHistoryScreen extends ConsumerStatefulWidget {
-  const LogHistoryScreen({Key? key}) : super(key: key);
+  const LogHistoryScreen({super.key});
 
   @override
   ConsumerState<LogHistoryScreen> createState() => _LogHistoryScreenState();
@@ -159,7 +159,7 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
   Widget _buildLogTile(BuildContext context, LogEntry log) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: _getLogTypeColor(log.type).withOpacity(0.1),
+        backgroundColor: _getLogTypeColor(log.type).withValues(alpha:0.1),
         child: Text(
           log.type.emoji,
           style: const TextStyle(fontSize: 20),
@@ -173,7 +173,7 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -428,13 +428,29 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
 
   Color _getLogTypeColor(LogType type) {
     switch (type) {
-      case LogType.cigarette:
+      case LogType.cigaretteSmoked:
         return AppTheme.errorColor;
-      case LogType.episode:
+      case LogType.urgeEpisode:
         return AppTheme.warningColor;
-      case LogType.craving:
+      case LogType.cravingLogged:
         return AppTheme.primaryColor;
-      case LogType.relapse:
+      case LogType.lapse:
+        return AppTheme.errorColor;
+      case LogType.cravingDelayed:
+        return AppTheme.successColor;
+      case LogType.triggerObserved:
+        return AppTheme.warningColor;
+      case LogType.copingAction:
+        return AppTheme.successColor;
+      case LogType.lapseRecovery:
+        return AppTheme.successColor;
+      case LogType.dailyCheckin:
+        return AppTheme.primaryColor;
+      case LogType.journalEntry:
+        return AppTheme.secondaryColor;
+      case LogType.replacementAction:
+        return AppTheme.successColor;
+      case LogType.pornExposure:
         return AppTheme.errorColor;
     }
   }

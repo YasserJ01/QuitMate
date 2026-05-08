@@ -289,7 +289,7 @@ final breathingExerciseProvider = StateNotifierProvider.autoDispose
         data: (userId) =>
             BreathingExerciseNotifier(repository, userId ?? '', pattern),
         loading: () => BreathingExerciseNotifier(repository, '', pattern),
-        error: (_, __) => BreathingExerciseNotifier(repository, '', pattern),
+        error: (_, _) => BreathingExerciseNotifier(repository, '', pattern),
       );
     });
 
@@ -366,8 +366,9 @@ class CbtSessionNotifier extends StateNotifier<CbtSessionState> {
     if (thoughtsBefore != null) session.thoughtsBefore = thoughtsBefore;
     if (thoughtsAfter != null) session.thoughtsAfter = thoughtsAfter;
     if (consequences != null) session.consequences = consequences;
-    if (alternativeChosen != null)
+    if (alternativeChosen != null) {
       session.alternativeChosen = alternativeChosen;
+    }
 
     await _repository.updateCbtSession(session);
     state = state.copyWith(session: session);
@@ -399,7 +400,7 @@ final cbtSessionProvider = StateNotifierProvider.autoDispose
         data: (userId) =>
             CbtSessionNotifier(repository, userId ?? '', technique),
         loading: () => CbtSessionNotifier(repository, '', technique),
-        error: (_, __) => CbtSessionNotifier(repository, '', technique),
+        error: (_, _) => CbtSessionNotifier(repository, '', technique),
       );
     });
 
@@ -506,7 +507,7 @@ final groundingSessionProvider = StateNotifierProvider.autoDispose
           data: (userId) =>
               GroundingSessionNotifier(repository, userId ?? '', exercise),
           loading: () => GroundingSessionNotifier(repository, '', exercise),
-          error: (_, __) => GroundingSessionNotifier(repository, '', exercise),
+          error: (_, _) => GroundingSessionNotifier(repository, '', exercise),
         );
       },
     );

@@ -11,10 +11,10 @@ class CbtTechniqueScreen extends ConsumerStatefulWidget {
   final int? cravingId;
 
   const CbtTechniqueScreen({
-    Key? key,
+    super.key,
     required this.technique,
     this.cravingId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<CbtTechniqueScreen> createState() => _CbtTechniqueScreenState();
@@ -44,13 +44,14 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
       },
     );
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (_hasStarted && !state.isCompleted) {
-          final shouldExit = await _showExitConfirmation();
-          return shouldExit ?? false;
+    return PopScope(
+      canPop: !(_hasStarted && !state.isCompleted),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _showExitConfirmation();
+        if (shouldExit == true && context.mounted) {
+          Navigator.pop(context);
         }
-        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -60,7 +61,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
             onPressed: () async {
               if (_hasStarted && !state.isCompleted) {
                 final shouldExit = await _showExitConfirmation();
-                if (shouldExit == true && mounted) {
+                if (shouldExit == true && context.mounted) {
                   Navigator.pop(context);
                 }
               } else {
@@ -115,7 +116,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -201,7 +202,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: AppTheme.successColor.withOpacity(0.1),
+                        color: AppTheme.successColor.withValues(alpha:0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -312,7 +313,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withOpacity(0.1),
+                color: AppTheme.successColor.withValues(alpha:0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -343,7 +344,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(

@@ -124,7 +124,7 @@ class NotificationSchedulerService {
     // Priority-weighted pool
     final pool = <NotificationType>[];
 
-    void _addIf(bool enabled, NotificationType type, [int weight = 1]) {
+    void addIf(bool enabled, NotificationType type, [int weight = 1]) {
       if (enabled) {
         for (var i = 0; i < weight; i++) {
           pool.add(type);
@@ -136,12 +136,12 @@ class NotificationSchedulerService {
     final resistanceRate = (stats.cravingResistanceRate as num?)?.toDouble() ?? 50.0;
     final cravingWeight = resistanceRate < 50 ? 3 : 1;
 
-    _addIf(prefs.cravingTipsEnabled, NotificationType.cravingTip, cravingWeight);
-    _addIf(prefs.encouragementEnabled, NotificationType.encouragement,
+    addIf(prefs.cravingTipsEnabled, NotificationType.cravingTip, cravingWeight);
+    addIf(prefs.encouragementEnabled, NotificationType.encouragement,
         resistanceRate > 70 ? 2 : 1);
-    _addIf(prefs.microChallengesEnabled, NotificationType.microChallenge);
-    _addIf(prefs.healthFactsEnabled, NotificationType.healthFact);
-    _addIf(prefs.motivationalQuotesEnabled, NotificationType.motivationalQuote);
+    addIf(prefs.microChallengesEnabled, NotificationType.microChallenge);
+    addIf(prefs.healthFactsEnabled, NotificationType.healthFact);
+    addIf(prefs.motivationalQuotesEnabled, NotificationType.motivationalQuote);
 
     // Milestone (only if today is a milestone day)
     if (prefs.milestoneEnabled && _isMilestoneDay(stats)) {

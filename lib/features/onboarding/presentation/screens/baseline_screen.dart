@@ -8,7 +8,7 @@ import '../providers/onboarding_provider.dart';
 import 'quit_date_screen.dart';
 
 class BaselineScreen extends ConsumerStatefulWidget {
-  const BaselineScreen({Key? key}) : super(key: key);
+  const BaselineScreen({super.key});
 
   @override
   ConsumerState<BaselineScreen> createState() => _BaselineScreenState();
@@ -57,12 +57,12 @@ class _BaselineScreenState extends ConsumerState<BaselineScreen> {
 
   bool _shouldShowSmokingFields() {
     final goalType = ref.watch(onboardingProvider).goalType;
-    return goalType == GoalType.quitSmoking || goalType == GoalType.both;
+    return goalType == GoalType.quitSmoking;
   }
 
   bool _shouldShowMasturbationFields() {
     final goalType = ref.watch(onboardingProvider).goalType;
-    return goalType == GoalType.reduceMasturbation || goalType == GoalType.both;
+    return goalType == GoalType.reduceMasturbation;
   }
 
   void _saveAndContinue() {
@@ -249,7 +249,7 @@ class _BaselineScreenState extends ConsumerState<BaselineScreen> {
                     onSelected: (_) {
                       ref.read(onboardingProvider.notifier).toggleTrigger(trigger);
                     },
-                    selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+                    selectedColor: AppTheme.primaryColor.withValues(alpha:0.2),
                     checkmarkColor: AppTheme.primaryColor,
                   );
                 }).toList(),

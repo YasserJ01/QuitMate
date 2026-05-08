@@ -133,7 +133,7 @@ class _SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.favorite, size: 80, color: Colors.white.withOpacity(0.9)),
+              Icon(Icons.favorite, size: 80, color: Colors.white.withValues(alpha:0.9)),
               const SizedBox(height: 24),
               const Text(
                 'QuitMate',

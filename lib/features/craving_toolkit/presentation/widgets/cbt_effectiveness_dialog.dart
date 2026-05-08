@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class CbtEffectivenessDialog extends StatefulWidget {
-  const CbtEffectivenessDialog({Key? key}) : super(key: key);
+  const CbtEffectivenessDialog({super.key});
 
   @override
   State<CbtEffectivenessDialog> createState() => _CbtEffectivenessDialogState();
@@ -31,7 +31,7 @@ class _CbtEffectivenessDialogState extends State<CbtEffectivenessDialog> {
                     _wasHelpful = !selected;
                   });
                 },
-                selectedColor: AppTheme.errorColor.withOpacity(0.2),
+                selectedColor: AppTheme.errorColor.withValues(alpha:0.2),
               ),
               const SizedBox(width: 12),
               ChoiceChip(
@@ -42,7 +42,7 @@ class _CbtEffectivenessDialogState extends State<CbtEffectivenessDialog> {
                     _wasHelpful = selected;
                   });
                 },
-                selectedColor: AppTheme.successColor.withOpacity(0.2),
+                selectedColor: AppTheme.successColor.withValues(alpha:0.2),
               ),
             ],
           ),

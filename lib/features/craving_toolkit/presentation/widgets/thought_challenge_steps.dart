@@ -9,13 +9,13 @@ class ThoughtChallengeSteps extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const ThoughtChallengeSteps({
-    Key? key,
+    super.key,
     required this.currentStep,
     required this.pageController,
     required this.onNext,
     required this.onPrevious,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<ThoughtChallengeSteps> createState() => _ThoughtChallengeStepsState();
@@ -92,9 +92,9 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
+              color: AppTheme.errorColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.errorColor.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.errorColor.withValues(alpha:0.3)),
             ),
             child: Row(
               children: [
@@ -154,9 +154,9 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
+              color: AppTheme.errorColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.errorColor.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.errorColor.withValues(alpha:0.3)),
             ),
             child: Row(
               children: [
@@ -226,7 +226,7 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
@@ -305,7 +305,7 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -394,7 +394,7 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
     ];
 
     return Card(
-      color: AppTheme.primaryColor.withOpacity(0.05),
+      color: AppTheme.primaryColor.withValues(alpha:0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -483,9 +483,9 @@ class _ThoughtChallengeStepsState extends State<ThoughtChallengeSteps> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha:0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

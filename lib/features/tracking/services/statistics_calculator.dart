@@ -11,7 +11,7 @@ class StatisticsCalculator {
     required UserProfile profile,
     DateTime? startDate,
     DateTime? endDate,
-    DateTime? referenceDate, // For testing or specific point-in-time analysis
+    DateTime? referenceDate,
   }) {
     final now = referenceDate ?? DateTime.now();
 
@@ -40,6 +40,12 @@ class StatisticsCalculator {
     // Calculate health metrics
     final healthMetrics = _calculateHealthMetrics(filteredLogs, profile, now);
 
+    // Calculate time reclaimed (reduction mode)
+    final timeReclaimed = _calculateTimeReclaimed(filteredLogs, profile);
+
+    // Calculate distress trend (reduction mode)
+    final distressTrend = _calculateDistressTrend(filteredLogs);
+
     return Statistics(
       currentStreak: streakData['currentStreak']!,
       longestStreak: streakData['longestStreak']!,
@@ -62,22 +68,27 @@ class StatisticsCalculator {
       weeklyImprovement: successRates['weeklyImprovement']!,
       cigarettesAvoided: healthMetrics['cigarettesAvoided']!,
       lifeMinutesGained: healthMetrics['lifeMinutesGained']!,
+      recoveryCount: streakData['recoveryCount']!,
+      timeReclaimedMinutes: timeReclaimed['timeReclaimedMinutes'],
+      episodesAvoided: timeReclaimed['episodesAvoided'],
+      distressTrend: distressTrend,
     );
   }
 
-  // ============= STREAK CALCULATIONS =============
+  // ============= STREAK CALCULATIONS (FIXED) ==============================
 
   static Map<String, dynamic> _calculateStreakData(
-      List<LogEntry> logs,
-      UserProfile profile,
-      DateTime now,
-      ) {
+    List<LogEntry> logs,
+    UserProfile profile,
+    DateTime now,
+  ) {
     if (profile.quitDate == null) {
       return {
         'currentStreak': 0,
         'longestStreak': 0,
         'lastLogDate': null,
         'streakStartDate': null,
+        'recoveryCount': profile.recoveryCount,
       };
     }
 
@@ -90,43 +101,42 @@ class StatisticsCalculator {
     // Group logs by day
     final logsByDay = <DateTime, List<LogEntry>>{};
     for (final log in sortedLogs) {
-      final day = DateTime(
-        log.timestamp.year,
-        log.timestamp.month,
-        log.timestamp.day,
-      );
+      final localTs = log.timestamp.toLocal();
+      final day = DateTime(localTs.year, localTs.month, localTs.day);
       logsByDay.putIfAbsent(day, () => []).add(log);
     }
 
     // Calculate streaks day by day
-    // Start from the quit date (normalized to start of day)
-    DateTime checkDate = DateTime(quitDate.year, quitDate.month, quitDate.day);
+    final quitDateLocal = quitDate.toLocal();
+    DateTime checkDate = DateTime(quitDateLocal.year, quitDateLocal.month, quitDateLocal.day);
     final today = DateTime(now.year, now.month, now.day);
 
-    int currentStreak = 0;
     int longestStreak = 0;
     int tempStreak = 0;
-    DateTime? tempStartDate = quitDate;
-    DateTime? currentStreakStartDate = quitDate;
+    DateTime? tempStartDate = quitDateLocal;
+    DateTime? currentStreakStartDate = quitDateLocal;
+    int relapseCount = 0;
+
+    final isSmokingMode = profile.goalType.name.toLowerCase().contains('smoking');
 
     // Iterate from quit date to today (inclusive)
     while (checkDate.isBefore(today) || checkDate.isAtSameMomentAs(today)) {
       final dayLogs = logsByDay[checkDate] ?? [];
-      final hadRelapse = dayLogs.any((log) => _isRelapse(log, profile));
+      final hadLapse = dayLogs.any((log) => log.type.isLapseFor(isSmokingMode));
 
-      if (hadRelapse) {
-        // Check if the streak that just ended was the longest
+      if (hadLapse) {
+        // Capture longest streak BEFORE resetting
         if (tempStreak > longestStreak) {
           longestStreak = tempStreak;
         }
-        // Reset streak
+        // Reset streak — longestStreak is preserved
         tempStreak = 0;
+        relapseCount++;
         // Next potential streak starts tomorrow
         tempStartDate = checkDate.add(const Duration(days: 1));
       } else {
         // Clean day
         tempStreak++;
-        // If this is the start of a new streak, mark it
         if (tempStreak == 1) {
           currentStreakStartDate = tempStartDate;
         }
@@ -136,17 +146,15 @@ class StatisticsCalculator {
     }
 
     // The streak at the end of the loop is the current streak
-    currentStreak = tempStreak;
-    
-    // Check if current streak is the longest
+    int currentStreak = tempStreak;
+
+    // Final longest streak check
     if (currentStreak > longestStreak) {
       longestStreak = currentStreak;
     }
 
-    // If current streak is 0 (relapsed today), the start date is irrelevant or should be tomorrow
-    // But for UI consistency, we can leave it as the last calculated start date or null
     if (currentStreak == 0) {
-      currentStreakStartDate = null; 
+      currentStreakStartDate = null;
     }
 
     return {
@@ -154,36 +162,16 @@ class StatisticsCalculator {
       'longestStreak': longestStreak,
       'lastLogDate': sortedLogs.isNotEmpty ? sortedLogs.last.timestamp : null,
       'streakStartDate': currentStreakStartDate,
+      'recoveryCount': profile.recoveryCount + relapseCount,
     };
   }
 
-  static bool _isRelapse(LogEntry log, UserProfile profile) {
-    // For smoking: any cigarette is a relapse
-    if (profile.goalType.name.toLowerCase().contains('smoking') &&
-        log.type == LogType.cigarette) {
-      return true;
-    }
-
-    // For masturbation: episodes are relapses
-    if (profile.goalType.name.toLowerCase().contains('masturbation') &&
-        log.type == LogType.episode) {
-      return true;
-    }
-
-    // Explicit relapse logs
-    if (log.type == LogType.relapse) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // ============= COUNT CALCULATIONS =============
+  // ============= COUNT CALCULATIONS ==============================
 
   static Map<String, int> _calculateCounts(
-      List<LogEntry> logs,
-      List<CravingEntry> cravings,
-      ) {
+    List<LogEntry> logs,
+    List<CravingEntry> cravings,
+  ) {
     int cigarettes = 0;
     int episodes = 0;
     int totalCravings = cravings.length;
@@ -192,17 +180,20 @@ class StatisticsCalculator {
 
     for (final log in logs) {
       switch (log.type) {
-        case LogType.cigarette:
+        case LogType.cigaretteSmoked:
           cigarettes += log.quantity ?? 1;
           break;
-        case LogType.episode:
+        case LogType.urgeEpisode:
           episodes++;
           break;
-        case LogType.craving:
-        // Already counted in cravings list
+        case LogType.cravingLogged:
+        case LogType.cravingDelayed:
+          // Counted in cravings or separate
           break;
-        case LogType.relapse:
+        case LogType.lapse:
           relapses++;
+          break;
+        default:
           break;
       }
     }
@@ -223,13 +214,13 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= MONEY CALCULATIONS =============
+  // ============= MONEY CALCULATIONS ==============================
 
   static Map<String, double> _calculateMoneySaved(
-      List<LogEntry> logs,
-      UserProfile profile,
-      DateTime now,
-      ) {
+    List<LogEntry> logs,
+    UserProfile profile,
+    DateTime now,
+  ) {
     if (profile.quitDate == null || profile.dailySmokingCost == null) {
       return {'saved': 0.0, 'potential': 0.0};
     }
@@ -241,7 +232,7 @@ class StatisticsCalculator {
 
     // Calculate actual cigarettes smoked
     final actualCigarettes = logs
-        .where((log) => log.type == LogType.cigarette)
+        .where((log) => log.type == LogType.cigaretteSmoked)
         .fold<int>(0, (sum, log) => sum + (log.quantity ?? 1));
 
     // Calculate cost of actual cigarettes
@@ -257,13 +248,13 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= TIME METRICS =============
+  // ============= TIME METRICS ==============================
 
   static Map<String, dynamic> _calculateTimeMetrics(
-      List<LogEntry> logs,
-      UserProfile profile,
-      DateTime now,
-      ) {
+    List<LogEntry> logs,
+    UserProfile profile,
+    DateTime now,
+  ) {
     if (profile.quitDate == null) {
       return {
         'daysTracking': 0,
@@ -273,35 +264,30 @@ class StatisticsCalculator {
     }
 
     final quitDate = profile.quitDate!;
-    
+
     // Normalize dates to start of day
     final startDate = DateTime(quitDate.year, quitDate.month, quitDate.day);
     final today = DateTime(now.year, now.month, now.day);
-    
-    // Days tracking is inclusive of today (e.g. Day 1)
-    // If quitDate is today, difference is 0, so add 1.
+
+    // Days tracking is inclusive of today
     final daysTracking = today.difference(startDate).inDays + 1;
 
-    // Calculate days clean (Total Cumulative)
-    // Iterate from start date to today and count days without relapses
+    // Calculate days clean
     int daysClean = 0;
-    
-    // Group logs by day for efficient lookup
+
+    final isSmokingMode = profile.goalType.name.toLowerCase().contains('smoking');
+
     final logsByDay = <DateTime, List<LogEntry>>{};
     for (final log in logs) {
-      if (_isRelapse(log, profile)) {
-        final day = DateTime(
-          log.timestamp.year,
-          log.timestamp.month,
-          log.timestamp.day,
-        );
+      if (log.type.isLapseFor(isSmokingMode)) {
+        final localTs = log.timestamp.toLocal();
+        final day = DateTime(localTs.year, localTs.month, localTs.day);
         logsByDay.putIfAbsent(day, () => []).add(log);
       }
     }
-    
+
     DateTime checkDate = startDate;
     while (checkDate.isBefore(today) || checkDate.isAtSameMomentAs(today)) {
-      // If no relapse logs for this day, it's a clean day
       if (!logsByDay.containsKey(checkDate)) {
         daysClean++;
       }
@@ -311,7 +297,7 @@ class StatisticsCalculator {
     // Calculate average relapses per day
     double averagePerDay = 0.0;
     if (daysTracking > 0) {
-      final totalRelapses = logs.where((log) => _isRelapse(log, profile)).length;
+      final totalRelapses = logs.where((log) => log.type.isLapseFor(isSmokingMode)).length;
       averagePerDay = totalRelapses / daysTracking;
     }
 
@@ -322,34 +308,74 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= TREND DATA =============
+  // ============= TIME RECLAIMED (REDUCTION MODE) ====================
+
+  static Map<String, dynamic> _calculateTimeReclaimed(
+    List<LogEntry> logs,
+    UserProfile profile,
+  ) {
+    if (profile.episodeDurationMinutes == null || profile.episodesPerWeek == null || profile.quitDate == null) {
+      return {'timeReclaimedMinutes': null, 'episodesAvoided': null};
+    }
+
+    final now = DateTime.now();
+    final daysSinceStart = now.difference(profile.quitDate!).inDays;
+    if (daysSinceStart <= 0) {
+      return {'timeReclaimedMinutes': 0, 'episodesAvoided': 0};
+    }
+
+    final baselineEpisodes = (profile.episodesPerWeek! / 7) * daysSinceStart;
+    final actualEpisodes = logs.where((l) => l.type == LogType.urgeEpisode).length;
+    final episodesAvoided = (baselineEpisodes - actualEpisodes).clamp(0, double.infinity).toInt();
+    final timeReclaimedMinutes = episodesAvoided * profile.episodeDurationMinutes!;
+
+    return {
+      'timeReclaimedMinutes': timeReclaimedMinutes,
+      'episodesAvoided': episodesAvoided,
+    };
+  }
+
+  // ============= DISTRESS TREND (REDUCTION MODE) ====================
+
+  static List<double> _calculateDistressTrend(List<LogEntry> logs) {
+    final now = DateTime.now();
+    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+
+    final checkins = logs
+        .where((l) => l.type == LogType.dailyCheckin && l.distressRating != null && l.timestamp.isAfter(sevenDaysAgo))
+        .toList();
+
+    // Group by day and take the latest rating per day
+    final byDay = <DateTime, double>{};
+    for (final log in checkins) {
+      final localTs = log.timestamp.toLocal();
+      final day = DateTime(localTs.year, localTs.month, localTs.day);
+      // Keep latest rating for each day
+      byDay[day] = log.distressRating!.toDouble();
+    }
+
+    // Return sorted by date ascending
+    final sorted = byDay.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    return sorted.map((e) => e.value).toList();
+  }
+
+  // ============= TREND DATA ==============================
 
   static Map<String, dynamic> _calculateTrendData(List<LogEntry> logs) {
-    // Daily counts
     final dailyCounts = <DateTime, int>{};
-
-    // Trigger frequency
     final triggerFrequency = <String, int>{};
-
-    // Hourly distribution
     final hourlyDistribution = <int, int>{};
 
     for (final log in logs) {
-      // Daily counts
-      final day = DateTime(
-        log.timestamp.year,
-        log.timestamp.month,
-        log.timestamp.day,
-      );
+      final localTs = log.timestamp.toLocal();
+      final day = DateTime(localTs.year, localTs.month, localTs.day);
       dailyCounts[day] = (dailyCounts[day] ?? 0) + 1;
 
-      // Trigger frequency
       for (final trigger in log.triggers) {
         triggerFrequency[trigger] = (triggerFrequency[trigger] ?? 0) + 1;
       }
 
-      // Hourly distribution
-      final hour = log.timestamp.hour;
+      final hour = localTs.hour;
       hourlyDistribution[hour] = (hourlyDistribution[hour] ?? 0) + 1;
     }
 
@@ -360,12 +386,12 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= SUCCESS RATES =============
+  // ============= SUCCESS RATES ==============================
 
   static Map<String, double> _calculateSuccessRates(
-      List<CravingEntry> cravings,
-      DateTime now,
-      ) {
+    List<CravingEntry> cravings,
+    DateTime now,
+  ) {
     if (cravings.isEmpty) {
       return {
         'resistanceRate': 0.0,
@@ -373,36 +399,22 @@ class StatisticsCalculator {
       };
     }
 
-    // Calculate overall resistance rate
-    final resistedCount = cravings
-        .where((c) => c.wasSuccessfullyResisted)
-        .length;
+    final resistedCount = cravings.where((c) => c.wasSuccessfullyResisted).length;
     final resistanceRate = (resistedCount / cravings.length) * 100;
 
-    // Calculate weekly improvement
     final oneWeekAgo = now.subtract(const Duration(days: 7));
     final twoWeeksAgo = now.subtract(const Duration(days: 14));
 
-    final lastWeekCravings = cravings
-        .where((c) => c.startTime.isAfter(oneWeekAgo))
-        .toList();
+    final lastWeekCravings = cravings.where((c) => c.startTime.isAfter(oneWeekAgo)).toList();
     final previousWeekCravings = cravings
-        .where((c) =>
-    c.startTime.isAfter(twoWeeksAgo) &&
-        c.startTime.isBefore(oneWeekAgo))
+        .where((c) => c.startTime.isAfter(twoWeeksAgo) && c.startTime.isBefore(oneWeekAgo))
         .toList();
 
     double weeklyImprovement = 0.0;
 
     if (lastWeekCravings.isNotEmpty && previousWeekCravings.isNotEmpty) {
-      final lastWeekRate = (lastWeekCravings
-          .where((c) => c.wasSuccessfullyResisted)
-          .length / lastWeekCravings.length) * 100;
-
-      final previousWeekRate = (previousWeekCravings
-          .where((c) => c.wasSuccessfullyResisted)
-          .length / previousWeekCravings.length) * 100;
-
+      final lastWeekRate = (lastWeekCravings.where((c) => c.wasSuccessfullyResisted).length / lastWeekCravings.length) * 100;
+      final previousWeekRate = (previousWeekCravings.where((c) => c.wasSuccessfullyResisted).length / previousWeekCravings.length) * 100;
       weeklyImprovement = lastWeekRate - previousWeekRate;
     }
 
@@ -412,13 +424,13 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= HEALTH METRICS =============
+  // ============= HEALTH METRICS ==============================
 
   static Map<String, dynamic> _calculateHealthMetrics(
-      List<LogEntry> logs,
-      UserProfile profile,
-      DateTime now,
-      ) {
+    List<LogEntry> logs,
+    UserProfile profile,
+    DateTime now,
+  ) {
     if (profile.quitDate == null || profile.cigarettesPerDay == null) {
       return {
         'cigarettesAvoided': 0,
@@ -428,21 +440,13 @@ class StatisticsCalculator {
 
     final daysSinceQuit = now.difference(profile.quitDate!).inDays;
 
-    // Calculate potential cigarettes if user had continued
     final potentialCigarettes = profile.cigarettesPerDay! * daysSinceQuit;
 
-    // Calculate actual cigarettes smoked
     final actualCigarettes = logs
-        .where((log) => log.type == LogType.cigarette)
+        .where((log) => log.type == LogType.cigaretteSmoked)
         .fold<int>(0, (sum, log) => sum + (log.quantity ?? 1));
 
-    // Cigarettes avoided
-    final cigarettesAvoided = (potentialCigarettes - actualCigarettes)
-        .clamp(0, double.infinity)
-        .toInt();
-
-    // Life minutes gained (rough estimate: ~11 minutes per cigarette)
-    // Source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2672370/
+    final cigarettesAvoided = (potentialCigarettes - actualCigarettes).clamp(0, double.infinity).toInt();
     final lifeMinutesGained = cigarettesAvoided * 11.0;
 
     return {
@@ -451,48 +455,39 @@ class StatisticsCalculator {
     };
   }
 
-  // ============= HELPER METHODS =============
+  // ============= HELPER METHODS ==============================
 
   static List<LogEntry> _filterByDateRange(
-      List<LogEntry> logs,
-      DateTime? startDate,
-      DateTime? endDate,
-      ) {
+    List<LogEntry> logs,
+    DateTime? startDate,
+    DateTime? endDate,
+  ) {
     return logs.where((log) {
-      if (startDate != null && log.timestamp.isBefore(startDate)) {
-        return false;
-      }
-      if (endDate != null && log.timestamp.isAfter(endDate)) {
-        return false;
-      }
+      if (startDate != null && log.timestamp.isBefore(startDate)) return false;
+      if (endDate != null && log.timestamp.isAfter(endDate)) return false;
       return true;
     }).toList();
   }
 
   static List<CravingEntry> _filterCravingsByDateRange(
-      List<CravingEntry> cravings,
-      DateTime? startDate,
-      DateTime? endDate,
-      ) {
+    List<CravingEntry> cravings,
+    DateTime? startDate,
+    DateTime? endDate,
+  ) {
     return cravings.where((craving) {
-      if (startDate != null && craving.startTime.isBefore(startDate)) {
-        return false;
-      }
-      if (endDate != null && craving.startTime.isAfter(endDate)) {
-        return false;
-      }
+      if (startDate != null && craving.startTime.isBefore(startDate)) return false;
+      if (endDate != null && craving.startTime.isAfter(endDate)) return false;
       return true;
     }).toList();
   }
 
-  // ============= CHART DATA GENERATORS =============
+  // ============= CHART DATA GENERATORS ==============================
 
-  /// Generate daily chart data for a specific time range
   static List<ChartDataPoint> generateDailyChartData(
-      List<LogEntry> logs,
-      TimeRange timeRange, {
-        LogType? filterByType,
-      }) {
+    List<LogEntry> logs,
+    TimeRange timeRange, {
+    LogType? filterByType,
+  }) {
     final startDate = timeRange.getStartDate();
     final filteredLogs = logs.where((log) {
       if (log.timestamp.isBefore(startDate)) return false;
@@ -500,49 +495,36 @@ class StatisticsCalculator {
       return true;
     }).toList();
 
-    // Group by day
     final countsByDay = <DateTime, int>{};
     for (final log in filteredLogs) {
-      final day = DateTime(
-        log.timestamp.year,
-        log.timestamp.month,
-        log.timestamp.day,
-      );
+      final localTs = log.timestamp.toLocal();
+      final day = DateTime(localTs.year, localTs.month, localTs.day);
       countsByDay[day] = (countsByDay[day] ?? 0) + 1;
     }
 
-    // Convert to chart data points
     final dataPoints = <ChartDataPoint>[];
     final sortedDates = countsByDay.keys.toList()..sort();
 
     for (final date in sortedDates) {
-      dataPoints.add(ChartDataPoint(
-        date: date,
-        value: countsByDay[date]!.toDouble(),
-      ));
+      dataPoints.add(ChartDataPoint(date: date, value: countsByDay[date]!.toDouble()));
     }
 
     return dataPoints;
   }
 
-  /// Generate weekly aggregated chart data
   static List<ChartDataPoint> generateWeeklyChartData(
-      List<LogEntry> logs,
-      TimeRange timeRange,
-      ) {
+    List<LogEntry> logs,
+    TimeRange timeRange,
+  ) {
     final startDate = timeRange.getStartDate();
-    final filteredLogs = logs.where((log) {
-      return log.timestamp.isAfter(startDate);
-    }).toList();
+    final filteredLogs = logs.where((log) => log.timestamp.isAfter(startDate)).toList();
 
-    // Group by week
     final countsByWeek = <DateTime, int>{};
     for (final log in filteredLogs) {
       final weekStart = _getWeekStart(log.timestamp);
       countsByWeek[weekStart] = (countsByWeek[weekStart] ?? 0) + 1;
     }
 
-    // Convert to chart data points
     final dataPoints = <ChartDataPoint>[];
     final sortedWeeks = countsByWeek.keys.toList()..sort();
 
@@ -557,15 +539,12 @@ class StatisticsCalculator {
     return dataPoints;
   }
 
-  /// Generate trigger frequency chart data
   static List<MapEntry<String, int>> generateTriggerFrequencyData(
-      List<LogEntry> logs,
-      TimeRange timeRange,
-      ) {
+    List<LogEntry> logs,
+    TimeRange timeRange,
+  ) {
     final startDate = timeRange.getStartDate();
-    final filteredLogs = logs.where((log) {
-      return log.timestamp.isAfter(startDate);
-    }).toList();
+    final filteredLogs = logs.where((log) => log.timestamp.isAfter(startDate)).toList();
 
     final triggerCounts = <String, int>{};
     for (final log in filteredLogs) {
@@ -574,71 +553,53 @@ class StatisticsCalculator {
       }
     }
 
-    // Sort by frequency (descending)
-    final sortedTriggers = triggerCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
+    final sortedTriggers = triggerCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return sortedTriggers;
   }
 
-  /// Generate hourly distribution data (heatmap style)
   static Map<int, int> generateHourlyDistributionData(
-      List<LogEntry> logs,
-      TimeRange timeRange,
-      ) {
+    List<LogEntry> logs,
+    TimeRange timeRange,
+  ) {
     final startDate = timeRange.getStartDate();
-    final filteredLogs = logs.where((log) {
-      return log.timestamp.isAfter(startDate);
-    }).toList();
+    final filteredLogs = logs.where((log) => log.timestamp.isAfter(startDate)).toList();
 
     final hourlyCount = <int, int>{};
-
-    // Initialize all hours
     for (int i = 0; i < 24; i++) {
       hourlyCount[i] = 0;
     }
 
-    // Count occurrences
     for (final log in filteredLogs) {
-      final hour = log.timestamp.hour;
+      final hour = log.timestamp.toLocal().hour;
       hourlyCount[hour] = hourlyCount[hour]! + 1;
     }
 
     return hourlyCount;
   }
 
-  /// Generate mood trend data
   static List<ChartDataPoint> generateMoodTrendData(
-      List<LogEntry> logs,
-      TimeRange timeRange,
-      ) {
+    List<LogEntry> logs,
+    TimeRange timeRange,
+  ) {
     final startDate = timeRange.getStartDate();
     final logsWithMood = logs.where((log) {
       return log.timestamp.isAfter(startDate) && log.mood != null;
     }).toList();
 
-    // Group by day and calculate average mood
     final moodByDay = <DateTime, List<int>>{};
     for (final log in logsWithMood) {
-      final day = DateTime(
-        log.timestamp.year,
-        log.timestamp.month,
-        log.timestamp.day,
-      );
+      final localTs = log.timestamp.toLocal();
+      final day = DateTime(localTs.year, localTs.month, localTs.day);
       moodByDay.putIfAbsent(day, () => []).add(log.mood!.value);
     }
 
-    // Calculate averages
     final dataPoints = <ChartDataPoint>[];
     final sortedDays = moodByDay.keys.toList()..sort();
 
     for (final day in sortedDays) {
       final moods = moodByDay[day]!;
       final averageMood = moods.reduce((a, b) => a + b) / moods.length;
-      dataPoints.add(ChartDataPoint(
-        date: day,
-        value: averageMood,
-      ));
+      dataPoints.add(ChartDataPoint(date: day, value: averageMood));
     }
 
     return dataPoints;
@@ -646,22 +607,19 @@ class StatisticsCalculator {
 
   static DateTime _getWeekStart(DateTime date) {
     final dayOfWeek = date.weekday;
-    return DateTime(date.year, date.month, date.day)
-        .subtract(Duration(days: dayOfWeek - 1));
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: dayOfWeek - 1));
   }
 
-  // ============= PROGRESS CALCULATIONS =============
+  // ============= PROGRESS CALCULATIONS ==============================
 
-  /// Calculate progress towards goal
   static double calculateProgressPercentage(
-      UserProfile profile,
-      Statistics stats, {
-        DateTime? now,
-      }) {
+    UserProfile profile,
+    Statistics stats, {
+    DateTime? now,
+  }) {
     if (profile.quitDate == null) return 0.0;
 
-    final checkDate = now ?? DateTime.now();
-    final milestones = [7, 14, 30, 60, 90, 180, 365]; // days
+    final milestones = [7, 14, 30, 60, 90, 180, 365];
 
     int currentMilestone = 0;
     for (final milestone in milestones) {
@@ -672,7 +630,6 @@ class StatisticsCalculator {
       }
     }
 
-    // Find next milestone
     int? nextMilestone;
     for (final milestone in milestones) {
       if (milestone > stats.currentStreak) {
@@ -681,18 +638,14 @@ class StatisticsCalculator {
       }
     }
 
-    if (nextMilestone == null) {
-      return 100.0; // Completed all milestones
-    }
+    if (nextMilestone == null) return 100.0;
 
-    // Calculate progress to next milestone
     final progressInMilestone = stats.currentStreak - currentMilestone;
-    final milestoneRange = nextMilestone - currentMilestone;
+    
 
     return ((currentMilestone + progressInMilestone) / nextMilestone) * 100;
   }
 
-  /// Get next milestone information
   static Map<String, dynamic> getNextMilestone(int currentStreak) {
     final milestones = [
       {'days': 1, 'name': 'First Day', 'emoji': '🎯'},
@@ -717,12 +670,26 @@ class StatisticsCalculator {
       }
     }
 
-    // Beyond all milestones
     return {
       'days': 365,
       'name': 'Champion',
       'emoji': '👑',
       'daysRemaining': 0,
     };
+  }
+
+  /// Format streak display — shows hours/minutes when currentStreak is 0
+  /// and quit date is today.
+  static String formatStreakDisplay(int days, DateTime? quitDate) {
+    if (days == 0 && quitDate != null) {
+      final now = DateTime.now();
+      final diff = now.difference(quitDate.toLocal());
+      if (diff.inHours < 24 && diff.inHours >= 0) {
+        final hours = diff.inHours;
+        final minutes = diff.inMinutes % 60;
+        return '${hours}h ${minutes}m';
+      }
+    }
+    return '$days ${days == 1 ? "Day" : "Days"}';
   }
 }

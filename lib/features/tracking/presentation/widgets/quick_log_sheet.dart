@@ -6,11 +6,12 @@ import '../../../onboarding/domain/entities/goal_type.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 import '../providers/tracking_provider.dart';
 import '../providers/statistics_provider.dart';
+import '../screens/lapse_recovery_screen.dart';
 import '../../data/models/log_entry.dart';
 import '../../data/models/craving_entry.dart';
 
 class QuickLogSheet extends ConsumerStatefulWidget {
-  const QuickLogSheet({Key? key}) : super(key: key);
+  const QuickLogSheet({super.key});
 
   @override
   ConsumerState<QuickLogSheet> createState() => _QuickLogSheetState();
@@ -19,7 +20,6 @@ class QuickLogSheet extends ConsumerStatefulWidget {
 class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
   MoodType? _selectedMood;
   final List<String> _selectedTriggers = [];
-  final int _cigaretteQuantity = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -53,28 +53,22 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
               ),
               const SizedBox(height: 20),
 
-              // Title
-              Text(
-                'Quick Log',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
+              Text('Quick Log',
+                  style: Theme.of(context).textTheme.displaySmall),
               const SizedBox(height: 8),
-              Text(
-                'Log an event quickly (≤5 seconds)',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
-              ),
+              Text('Log an event quickly',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textSecondary,
+                      )),
               const SizedBox(height: 24),
 
-              // Quick action buttons
-              FutureBuilder(
+              // Mode-aware quick actions
+              FutureBuilder<GoalType>(
                 future: _getUserGoalType(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-
                   final goalType = snapshot.data!;
                   return _buildQuickActions(context, goalType, quickLogState);
                 },
@@ -82,21 +76,17 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
 
               const SizedBox(height: 24),
 
-              // Optional: Mood selector
-              Text(
-                'How are you feeling? (Optional)',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              // Optional mood
+              Text('How are you feeling? (Optional)',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               _buildMoodSelector(),
 
               const SizedBox(height: 24),
 
-              // Optional: Common triggers
-              Text(
-                'Any triggers? (Optional)',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              // Optional triggers
+              Text('Any triggers? (Optional)',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               _buildCommonTriggers(),
 
@@ -105,7 +95,7 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.errorColor.withOpacity(0.1),
+                    color: AppTheme.errorColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -113,10 +103,8 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
                       const Icon(Icons.error_outline, color: AppTheme.errorColor),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          quickLogState.error!,
-                          style: const TextStyle(color: AppTheme.errorColor),
-                        ),
+                        child: Text(quickLogState.error!,
+                            style: const TextStyle(color: AppTheme.errorColor)),
                       ),
                     ],
                   ),
@@ -132,68 +120,83 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
   }
 
   Widget _buildQuickActions(
-      BuildContext context,
-      GoalType goalType,
-      QuickLogState state,
-      ) {
-    final actions = <Widget>[];
+    BuildContext context,
+    GoalType goalType,
+    QuickLogState state,
+  ) {
+    final actions = switch (goalType) {
+      GoalType.quitSmoking => [
+          _buildQuickActionButton(
+            context,
+            icon: Icons.smoking_rooms,
+            label: 'Smoked',
+            emoji: '🚬',
+            color: AppTheme.errorColor,
+            isLoading: state.isLogging,
+            onTap: () => _logCigarette(context),
+          ),
+          _buildQuickActionButton(
+            context,
+            icon: Icons.psychology,
+            label: 'Craving',
+            emoji: '😤',
+            color: AppTheme.primaryColor,
+            isLoading: state.isLogging,
+            onTap: () => _logCraving(context),
+          ),
+          _buildQuickActionButton(
+            context,
+            icon: Icons.access_time,
+            label: 'Delayed',
+            emoji: '⏰',
+            color: AppTheme.successColor,
+            isLoading: state.isLogging,
+            onTap: () => _logCravingDelayed(context),
+          ),
+        ],
+      GoalType.reduceMasturbation => [
+          _buildQuickActionButton(
+            context,
+            icon: Icons.warning_amber_rounded,
+            label: 'Urge Episode',
+            emoji: '📱',
+            color: AppTheme.warningColor,
+            isLoading: state.isLogging,
+            onTap: () => _logEpisode(context),
+          ),
+          _buildQuickActionButton(
+            context,
+            icon: Icons.psychology,
+            label: 'Craving',
+            emoji: '😤',
+            color: AppTheme.primaryColor,
+            isLoading: state.isLogging,
+            onTap: () => _logCraving(context),
+          ),
+          _buildQuickActionButton(
+            context,
+            icon: Icons.shield,
+            label: 'Urge Resisted',
+            emoji: '💪',
+            color: AppTheme.successColor,
+            isLoading: state.isLogging,
+            onTap: () => _logUrgeResisted(context),
+          ),
+        ],
+    };
 
-    if (goalType == GoalType.quitSmoking || goalType == GoalType.both) {
-      actions.add(
-        _buildQuickActionButton(
-          context,
-          icon: Icons.smoking_rooms,
-          label: 'Smoked',
-          emoji: '🚬',
-          color: AppTheme.errorColor,
-          isLoading: state.isLogging,
-          onTap: () => _logCigarette(context),
-        ),
-      );
-    }
-
-    if (goalType == GoalType.reduceMasturbation || goalType == GoalType.both) {
-      actions.add(
-        _buildQuickActionButton(
-          context,
-          icon: Icons.warning_amber_rounded,
-          label: 'Episode',
-          emoji: '📱',
-          color: AppTheme.warningColor,
-          isLoading: state.isLogging,
-          onTap: () => _logEpisode(context),
-        ),
-      );
-    }
-
-    actions.add(
-      _buildQuickActionButton(
-        context,
-        icon: Icons.psychology,
-        label: 'Craving',
-        emoji: '😤',
-        color: AppTheme.primaryColor,
-        isLoading: state.isLogging,
-        onTap: () => _logCraving(context),
-      ),
-    );
-
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: actions,
-    );
+    return Wrap(spacing: 12, runSpacing: 12, children: actions);
   }
 
   Widget _buildQuickActionButton(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required String emoji,
-        required Color color,
-        required bool isLoading,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String emoji,
+    required Color color,
+    required bool isLoading,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(16),
@@ -201,32 +204,23 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
         width: (MediaQuery.of(context).size.width - 72) / 2,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 2,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
         ),
         child: Column(
           children: [
             if (isLoading)
               const SizedBox(
-                width: 32,
-                height: 32,
+                width: 32, height: 32,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
               Text(emoji, style: const TextStyle(fontSize: 32)),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600, color: color)),
           ],
         ),
       ),
@@ -252,11 +246,9 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
               ),
               selected: isSelected,
               onSelected: (selected) {
-                setState(() {
-                  _selectedMood = selected ? mood : null;
-                });
+                setState(() => _selectedMood = selected ? mood : null);
               },
-              selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+              selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
               checkmarkColor: AppTheme.primaryColor,
             ),
           );
@@ -267,7 +259,6 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
 
   Widget _buildCommonTriggers() {
     final commonTriggers = ['Stress', 'Boredom', 'Social', 'Anxiety'];
-
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -285,30 +276,31 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
               }
             });
           },
-          selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+          selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
           checkmarkColor: AppTheme.primaryColor,
         );
       }).toList(),
     );
   }
 
+  // ── Log actions ────────────────────────────────────────────────────────
+
   Future<void> _logCigarette(BuildContext context) async {
     final success = await ref.read(quickLogProvider.notifier).logCigarette(
-      quantity: _cigaretteQuantity,
-      triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
-      mood: _selectedMood,
-    );
+          quantity: 1,
+          triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
+          mood: _selectedMood,
+        );
 
-    if (success && mounted) {
-      // Refresh statistics
+    if (success && context.mounted) {
       ref.read(statisticsProvider.notifier).refresh();
-
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cigarette logged'),
-          backgroundColor: AppTheme.successColor,
-          duration: Duration(seconds: 2),
+
+      // Navigate to lapse recovery screen instead of SnackBar
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LapseRecoveryScreen(lapseType: LogType.cigaretteSmoked),
         ),
       );
     }
@@ -316,27 +308,25 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
 
   Future<void> _logEpisode(BuildContext context) async {
     final success = await ref.read(quickLogProvider.notifier).logEpisode(
-      triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
-      mood: _selectedMood,
-    );
+          triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
+          mood: _selectedMood,
+        );
 
-    if (success && mounted) {
-      // Refresh statistics
+    if (success && context.mounted) {
       ref.read(statisticsProvider.notifier).refresh();
-
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Episode logged'),
-          backgroundColor: AppTheme.successColor,
-          duration: Duration(seconds: 2),
+
+      // Navigate to lapse recovery screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LapseRecoveryScreen(lapseType: LogType.urgeEpisode),
         ),
       );
     }
   }
 
   Future<void> _logCraving(BuildContext context) async {
-    // Show intensity selector
     final intensity = await showDialog<CravingIntensity>(
       context: context,
       builder: (context) => AlertDialog(
@@ -360,70 +350,96 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
       ),
     );
 
-    if (intensity == null || !mounted) return;
+    if (intensity == null || !context.mounted) return;
 
     final success = await ref.read(quickLogProvider.notifier).logCraving(
-      intensity: intensity,
-      triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
-    );
+          intensity: intensity,
+          triggers: _selectedTriggers.isNotEmpty ? _selectedTriggers : null,
+        );
 
-    if (success && mounted) {
-      // Refresh statistics
+    if (success && context.mounted) {
       ref.read(statisticsProvider.notifier).refresh();
+      Navigator.pop(context);
 
-      // Get the newly created craving to pass its ID to the toolkit
-      final newCraving = ref.read(quickLogProvider).lastLog;
-
-      Navigator.pop(context); // Close the quick log sheet
-
-      // Show toolkit option dialog
       final useToolkit = await showDialog<bool>(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: const Text('Craving Logged'),
-              content: const Text(
-                'Would you like to use the Craving Toolkit to help manage this craving?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Maybe Later'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context, true); // First, close the dialog.
-                    Navigator.push(      // Then, navigate to the toolkit screen.
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CravingToolkitScreen(
-                          cravingId: newCraving?.id,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('Open Toolkit'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: const Text('Craving Logged'),
+          content: const Text(
+              'Would you like to use the Craving Toolkit to help manage this craving?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Maybe Later'),
             ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Open Toolkit'),
+            ),
+          ],
+        ),
       );
 
-
-      if (useToolkit == true && mounted) {
+      if (useToolkit == true && context.mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                const CravingToolkitScreen(
-                  cravingId: null, // We can link this to the craving entry if needed
-                ),
-          ),
+              builder: (_) => const CravingToolkitScreen()),
         );
       }
+    }
+  }
+
+  Future<void> _logCravingDelayed(BuildContext context) async {
+    final entry = LogEntry()
+      ..userId = (await ref.read(currentUserIdProvider.future)) ?? ''
+      ..type = LogType.cravingDelayed
+      ..triggers = _selectedTriggers
+      ..mood = _selectedMood
+      ..timestamp = DateTime.now().toUtc();
+
+    final trackingRepo = ref.read(trackingRepositoryProvider);
+    await trackingRepo.addLogEntry(entry);
+
+    if (context.mounted) {
+      ref.read(statisticsProvider.notifier).refresh();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Craving delayed! Great work! 💪'),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _logUrgeResisted(BuildContext context) async {
+    final entry = LogEntry()
+      ..userId = (await ref.read(currentUserIdProvider.future)) ?? ''
+      ..type = LogType.copingAction
+      ..triggers = _selectedTriggers
+      ..mood = _selectedMood
+      ..wasResisted = true
+      ..timestamp = DateTime.now().toUtc();
+
+    final trackingRepo = ref.read(trackingRepositoryProvider);
+    await trackingRepo.addLogEntry(entry);
+
+    if (context.mounted) {
+      ref.read(statisticsProvider.notifier).refresh();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Urge resisted! Keep it up! 🛡️'),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -442,11 +458,9 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
 
   Future<GoalType> _getUserGoalType() async {
     final userId = await ref.read(currentUserIdProvider.future);
-    if (userId == null) return GoalType.both;
-
+    if (userId == null) return GoalType.quitSmoking;
     final profileRepo = ref.read(profileRepositoryProvider);
     final profile = await profileRepo.getProfile(userId);
-
-    return profile?.goalType ?? GoalType.both;
+    return profile?.goalType ?? GoalType.quitSmoking;
   }
 }

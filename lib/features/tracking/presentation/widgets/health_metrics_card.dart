@@ -6,9 +6,9 @@ class HealthMetricsCard extends StatelessWidget {
   final Statistics statistics;
 
   const HealthMetricsCard({
-    Key? key,
+    super.key,
     required this.statistics,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class HealthMetricsCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.successColor.withOpacity(0.1),
+                    color: AppTheme.successColor.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -130,13 +130,13 @@ class HealthMetricsCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.successColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.1),
+            AppTheme.successColor.withValues(alpha:0.1),
+            AppTheme.primaryColor.withValues(alpha:0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.successColor.withOpacity(0.3),
+          color: AppTheme.successColor.withValues(alpha:0.3),
           width: 1,
         ),
       ),

@@ -5,9 +5,9 @@ class FiveSensesExercise extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const FiveSensesExercise({
-    Key? key,
+    super.key,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<FiveSensesExercise> createState() => _FiveSensesExerciseState();
@@ -118,7 +118,7 @@ class _FiveSensesExerciseState extends State<FiveSensesExercise> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withOpacity(0.1),
+        color: AppTheme.warningColor.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -214,7 +214,7 @@ class _FiveSensesExerciseState extends State<FiveSensesExercise> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -271,7 +271,7 @@ class _FiveSensesExerciseState extends State<FiveSensesExercise> {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppTheme.warningColor.withOpacity(0.2),
+          backgroundColor: AppTheme.warningColor.withValues(alpha:0.2),
           child: Text(
             '${index + 1}',
             style: const TextStyle(
@@ -303,7 +303,7 @@ class _FiveSensesExerciseState extends State<FiveSensesExercise> {
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: AppTheme.warningColor.withOpacity(0.2),
+              backgroundColor: AppTheme.warningColor.withValues(alpha:0.2),
               child: Text(
                 '${items.length + 1}',
                 style: const TextStyle(

@@ -5,7 +5,7 @@ import '../../data/models/toolkit_models.dart';
 import '../providers/toolkit_provider.dart';
 
 class ToolkitHistoryScreen extends ConsumerWidget {
-  const ToolkitHistoryScreen({Key? key}) : super(key: key);
+  const ToolkitHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
