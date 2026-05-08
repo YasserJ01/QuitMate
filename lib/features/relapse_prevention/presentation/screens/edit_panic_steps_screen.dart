@@ -6,7 +6,7 @@ import '../../data/models/relapse_models.dart';
 import '../providers/relapse_provider.dart';
 
 class EditPanicStepsScreen extends ConsumerStatefulWidget {
-  const EditPanicStepsScreen({Key? key}) : super(key: key);
+  const EditPanicStepsScreen({super.key});
 
   @override
   ConsumerState<EditPanicStepsScreen> createState() => _EditPanicStepsScreenState();
@@ -195,7 +195,7 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<PanicActionType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Action Type',
                   ),
@@ -291,7 +291,7 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
     };
 
     return DropdownButtonFormField<String>(
-      value: selectedValue ?? 'box',
+      initialValue: selectedValue ?? 'box',
       decoration: const InputDecoration(
         labelText: 'Breathing Pattern',
         helperText: 'Choose which breathing exercise to use',
@@ -318,7 +318,7 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
     };
 
     return DropdownButtonFormField<String>(
-      value: selectedValue ?? 'fiveSenses',
+      initialValue: selectedValue ?? 'fiveSenses',
       decoration: const InputDecoration(
         labelText: 'Grounding Exercise',
         helperText: 'Choose which grounding technique to use',
@@ -345,7 +345,7 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
     };
 
     return DropdownButtonFormField<String>(
-      value: selectedValue ?? 'urgeSurfing',
+      initialValue: selectedValue ?? 'urgeSurfing',
       decoration: const InputDecoration(
         labelText: 'CBT Technique',
         helperText: 'Choose which CBT technique to use',

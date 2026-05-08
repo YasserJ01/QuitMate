@@ -15,19 +15,45 @@ class UserProfile {
   @Enumerated(EnumType.name)
   late GoalType goalType;
 
-  // Smoking baseline
+  // Mode lock flag — set true after onboarding completes (BR-02)
+  bool modeLocked = false;
+
+  // Denormalized streak data for fast reads (SRS §13.6)
+  int longestStreakDays = 0;
+  int recoveryCount = 0;
+  DateTime? lastLapseAt; // UTC — for post-lapse notification scheduling
+
+  // ── Smoking profile (only set if goalType == quitSmoking) ─────────────
   int? cigarettesPerDay;
-  double? costPerPack;
   int? cigarettesPerPack;
+  double? costPerPack;
+  int? ttfcMinutesIndex; // 0=≤5min, 1=6-30min, 2=31-60min, 3=>60min
+  int? yearsSmoking;
+  String? reductionPlanJson; // gradual reduction schedule as JSON string (FR-S07)
+  int? previousQuitAttempts;
+  List<String> previousAids = [];
+  int? confidenceToQuit; // 1–10
+  List<String> smokingWindows = []; // time-of-day risk windows
 
-  // Masturbation baseline
+  // ── Reduction profile (only set if goalType == reduceMasturbation) ────
   int? episodesPerWeek;
+  int? episodeDurationMinutes; // user estimate for time reclaimed calc
+  bool? pornInvolvementFlag; // optional, user-volunteered (FR-M02 neutral label)
+  int? distressLevel; // 1–10
+  int? sleepEffectIndex; // 0=None, 1=Slight, 2=Moderate, 3=Severe
+  int? focusEffectIndex;
+  int? relationshipEffectIndex;
+  int? previousReductionAttempts;
+  int? confidenceToReduce; // 1–10
+  int? frequencyTarget; // episodes/week goal (FR-M08)
+  List<String> timeOfDayPatterns = []; // morning, afternoon, evening, etc.
+  List<String> values = []; // personal motivation values (FR-M07)
 
-  // Triggers
+  // ── Shared ────────────────────────────────────────────────────────────
   @Enumerated(EnumType.name)
   List<TriggerType> triggers = [];
 
-  // Quit date
+  // Quit/start date (UTC)
   DateTime? quitDate;
 
   // Timestamps

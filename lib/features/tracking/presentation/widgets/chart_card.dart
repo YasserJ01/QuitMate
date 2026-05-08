@@ -9,9 +9,9 @@ class ChartCard extends ConsumerStatefulWidget {
   final Statistics statistics;
 
   const ChartCard({
-    Key? key,
+    super.key,
     required this.statistics,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<ChartCard> createState() => _ChartCardState();
@@ -179,7 +179,7 @@ class _ChartCardState extends ConsumerState<ChartCard> {
                           ),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            color: AppTheme.primaryColor.withValues(alpha:0.1),
                           ),
                         ),
                       ],

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../data/models/relapse_models.dart';
 import '../providers/relapse_provider.dart';
 import '../widgets/panic_step_card.dart';
@@ -13,7 +11,7 @@ import '../../../craving_toolkit/data/models/toolkit_models.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PanicModeScreen extends ConsumerWidget {
-  const PanicModeScreen({Key? key}) : super(key: key);
+  const PanicModeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,7 +47,7 @@ class PanicModeScreen extends ConsumerWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       AppTheme.errorColor,
-                      AppTheme.errorColor.withOpacity(0.8),
+                      AppTheme.errorColor.withValues(alpha:0.8),
                     ],
                   ),
                 ),
@@ -68,7 +66,7 @@ class PanicModeScreen extends ConsumerWidget {
                     Text(
                       'You\'re going to be okay. Follow these steps:',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha:0.9),
                         fontSize: 16,
                       ),
                       textAlign: TextAlign.center,
@@ -97,10 +95,10 @@ class PanicModeScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha:0.1),
                   border: Border(
                     top: BorderSide(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha:0.2),
                     ),
                   ),
                 ),

@@ -20,10 +20,23 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
   DateTime? _selectedDate;
   final List<int> _quickDays = [0, 1, 3, 7, 14, 30];
 
+  // Gradual reduction fields
+  bool _isGradualReduction = false;
+  final _reducePerWeekController = TextEditingController(text: '2');
+  final _overWeeksController = TextEditingController(text: '4');
+
   @override
   void initState() {
     super.initState();
     _selectedDate = ref.read(onboardingProvider).quitDate;
+    _isGradualReduction = ref.read(onboardingProvider).isGradualReduction;
+  }
+
+  @override
+  void dispose() {
+    _reducePerWeekController.dispose();
+    _overWeeksController.dispose();
+    super.dispose();
   }
 
   void _selectQuickDate(int days) {
@@ -62,33 +75,38 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
       return;
     }
 
-    // 1. Persist profile + userId to secure storage
-    final success =
-    await ref.read(onboardingProvider.notifier).completeOnboarding();
+    final notifier = ref.read(onboardingProvider.notifier);
+
+    // Save gradual reduction plan if applicable
+    if (_isGradualReduction) {
+      final reducePerWeek = int.tryParse(_reducePerWeekController.text) ?? 2;
+      final overWeeks = int.tryParse(_overWeeksController.text) ?? 4;
+      // Store as simple JSON string
+      notifier.setReductionPlanJson(
+        '{"reducePerWeek":$reducePerWeek,"overWeeks":$overWeeks}',
+      );
+    }
+
+    final success = await notifier.completeOnboarding();
 
     if (!mounted) return;
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            ref.read(onboardingProvider).error ?? 'Failed to complete setup',
-          ),
+          content: Text(ref.read(onboardingProvider).error ?? 'Failed to complete setup'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
     }
 
-    // 2. Bootstrap notifications for the new user (non-blocking — any error is
-    //    logged and swallowed so the app still navigates to the dashboard).
     _scheduleFirstNotifications();
 
-    // 3. Navigate to dashboard
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const DashboardScreen()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -96,12 +114,9 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
   Future<void> _scheduleFirstNotifications() async {
     try {
       final userId = ref.read(onboardingProvider).userId;
-      final manager =
-      await ref.read(notificationManagerProvider.future);
-
+      final manager = await ref.read(notificationManagerProvider.future);
       final granted = await manager.requestPermissions();
       if (!granted) return;
-
       await manager.scheduleAll(userId);
       await manager.schedulePreventive(userId);
     } catch (e) {
@@ -145,10 +160,82 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                 Text(
                   AppStrings.quitDateSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.textSecondary,
+                        color: AppTheme.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Quit method toggle ───────────────────────────────────
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Quit Method',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('Quit on a date'),
+                                selected: !_isGradualReduction,
+                                onSelected: (_) {
+                                  setState(() => _isGradualReduction = false);
+                                  ref.read(onboardingProvider.notifier)
+                                      .setGradualReduction(false);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('Gradual reduction'),
+                                selected: _isGradualReduction,
+                                onSelected: (_) {
+                                  setState(() => _isGradualReduction = true);
+                                  ref.read(onboardingProvider.notifier)
+                                      .setGradualReduction(true);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_isGradualReduction) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _reducePerWeekController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Reduce by',
+                                    suffixText: '/week',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _overWeeksController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Over',
+                                    suffixText: 'weeks',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 32),
+
+                const SizedBox(height: 24),
 
                 // ── Selected date display ────────────────────────────────
                 if (_selectedDate != null)
@@ -164,15 +251,14 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                   spacing: 12,
                   runSpacing: 12,
                   children: _quickDays.map((days) {
-                    final candidate =
-                    DateTime.now().add(Duration(days: days));
+                    final candidate = DateTime.now().add(Duration(days: days));
                     final selected = _selectedDate != null &&
                         _isSameDay(_selectedDate!, candidate);
                     return OutlinedButton(
                       onPressed: () => _selectQuickDate(days),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: selected
-                            ? AppTheme.primaryColor.withOpacity(0.1)
+                            ? AppTheme.primaryColor.withValues(alpha:0.1)
                             : null,
                         side: BorderSide(
                           color: selected
@@ -187,8 +273,6 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // ── Custom date picker ───────────────────────────────────
                 OutlinedButton.icon(
                   onPressed: _selectCustomDate,
                   icon: const Icon(Icons.calendar_today),
@@ -198,11 +282,11 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 // ── Research tip ─────────────────────────────────────────
                 Card(
-                  color: AppTheme.warningColor.withOpacity(0.1),
+                  color: AppTheme.warningColor.withValues(alpha:0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
@@ -212,8 +296,7 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Research shows that setting a specific quit date '
-                                'increases your chances of success.',
+                            'Research shows that setting a specific quit date increases your chances of success.',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
@@ -227,8 +310,7 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
                 // ── Finish ───────────────────────────────────────────────
                 GradientButton(
                   text: AppStrings.finish,
-                  onPressed:
-                  _selectedDate != null ? _completeOnboarding : null,
+                  onPressed: _selectedDate != null ? _completeOnboarding : null,
                   icon: Icons.check,
                   isLoading: state.isLoading,
                 ),
@@ -241,7 +323,7 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
   }
 }
 
-// ─── Selected date card ───────────────────────────────────────────────────────
+// ─── Selected date card ────────────────────────────────────────────────────
 
 class _SelectedDateCard extends StatelessWidget {
   final DateTime date;
@@ -259,12 +341,11 @@ class _SelectedDateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: AppTheme.primaryColor.withOpacity(0.1),
+      color: AppTheme.primaryColor.withValues(alpha:0.1),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            // Calendar chip
             Container(
               width: 60,
               height: 60,
@@ -275,18 +356,13 @@ class _SelectedDateCard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    '${date.day}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    _shortMonths[date.month - 1],
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+                  Text('${date.day}',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold)),
+                  Text(_shortMonths[date.month - 1],
+                      style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
             ),
@@ -295,16 +371,10 @@ class _SelectedDateCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Your quit date',
-                    style: TextStyle(
-                        fontSize: 14, color: AppTheme.textSecondary),
-                  ),
-                  Text(
-                    '${_months[date.month - 1]} ${date.day}, ${date.year}',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
+                  const Text('Your quit date',
+                      style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                  Text('${_months[date.month - 1]} ${date.day}, ${date.year}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),

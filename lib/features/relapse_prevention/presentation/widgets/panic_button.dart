@@ -4,7 +4,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../screens/panic_mode_screen.dart';
 
 class PanicButton extends StatefulWidget {
-  const PanicButton({Key? key}) : super(key: key);
+  const PanicButton({super.key});
 
   @override
   State<PanicButton> createState() => _PanicButtonState();
@@ -42,7 +42,7 @@ class _PanicButtonState extends State<PanicButton> with SingleTickerProviderStat
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppTheme.errorColor.withOpacity(0.4),
+              color: AppTheme.errorColor.withValues(alpha:0.4),
               blurRadius: 20,
               spreadRadius: 5,
             ),

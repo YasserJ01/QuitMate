@@ -15,14 +15,14 @@ class CbtTechniqueContent extends StatelessWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const CbtTechniqueContent({
-    Key? key,
+    super.key,
     required this.technique,
     required this.currentStep,
     required this.pageController,
     required this.onNext,
     required this.onPrevious,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -22,90 +22,95 @@ const LogEntrySchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'durationSeconds': PropertySchema(
+    r'distressRating': PropertySchema(
       id: 1,
+      name: r'distressRating',
+      type: IsarType.long,
+    ),
+    r'durationSeconds': PropertySchema(
+      id: 2,
       name: r'durationSeconds',
       type: IsarType.long,
     ),
     r'formattedDate': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'formattedDate',
       type: IsarType.string,
     ),
     r'formattedTime': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'formattedTime',
       type: IsarType.string,
     ),
     r'intensity': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'intensity',
       type: IsarType.long,
     ),
     r'isThisMonth': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'isThisMonth',
       type: IsarType.bool,
     ),
     r'isThisWeek': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'isThisWeek',
       type: IsarType.bool,
     ),
     r'isToday': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'isToday',
       type: IsarType.bool,
     ),
     r'location': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'location',
       type: IsarType.string,
     ),
     r'mood': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'mood',
       type: IsarType.string,
       enumMap: _LogEntrymoodEnumValueMap,
     ),
     r'notes': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'notes',
       type: IsarType.string,
     ),
     r'quantity': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'quantity',
       type: IsarType.long,
     ),
     r'timestamp': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'timestamp',
       type: IsarType.dateTime,
     ),
     r'triggers': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'triggers',
       type: IsarType.stringList,
     ),
     r'type': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'type',
       type: IsarType.string,
       enumMap: _LogEntrytypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'userId',
       type: IsarType.string,
     ),
     r'wasResisted': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'wasResisted',
       type: IsarType.bool,
     )
@@ -183,23 +188,24 @@ void _logEntrySerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeLong(offsets[1], object.durationSeconds);
-  writer.writeString(offsets[2], object.formattedDate);
-  writer.writeString(offsets[3], object.formattedTime);
-  writer.writeLong(offsets[4], object.intensity);
-  writer.writeBool(offsets[5], object.isThisMonth);
-  writer.writeBool(offsets[6], object.isThisWeek);
-  writer.writeBool(offsets[7], object.isToday);
-  writer.writeString(offsets[8], object.location);
-  writer.writeString(offsets[9], object.mood?.name);
-  writer.writeString(offsets[10], object.notes);
-  writer.writeLong(offsets[11], object.quantity);
-  writer.writeDateTime(offsets[12], object.timestamp);
-  writer.writeStringList(offsets[13], object.triggers);
-  writer.writeString(offsets[14], object.type.name);
-  writer.writeDateTime(offsets[15], object.updatedAt);
-  writer.writeString(offsets[16], object.userId);
-  writer.writeBool(offsets[17], object.wasResisted);
+  writer.writeLong(offsets[1], object.distressRating);
+  writer.writeLong(offsets[2], object.durationSeconds);
+  writer.writeString(offsets[3], object.formattedDate);
+  writer.writeString(offsets[4], object.formattedTime);
+  writer.writeLong(offsets[5], object.intensity);
+  writer.writeBool(offsets[6], object.isThisMonth);
+  writer.writeBool(offsets[7], object.isThisWeek);
+  writer.writeBool(offsets[8], object.isToday);
+  writer.writeString(offsets[9], object.location);
+  writer.writeString(offsets[10], object.mood?.name);
+  writer.writeString(offsets[11], object.notes);
+  writer.writeLong(offsets[12], object.quantity);
+  writer.writeDateTime(offsets[13], object.timestamp);
+  writer.writeStringList(offsets[14], object.triggers);
+  writer.writeString(offsets[15], object.type.name);
+  writer.writeDateTime(offsets[16], object.updatedAt);
+  writer.writeString(offsets[17], object.userId);
+  writer.writeBool(offsets[18], object.wasResisted);
 }
 
 LogEntry _logEntryDeserialize(
@@ -210,21 +216,22 @@ LogEntry _logEntryDeserialize(
 ) {
   final object = LogEntry();
   object.createdAt = reader.readDateTime(offsets[0]);
-  object.durationSeconds = reader.readLongOrNull(offsets[1]);
+  object.distressRating = reader.readLongOrNull(offsets[1]);
+  object.durationSeconds = reader.readLongOrNull(offsets[2]);
   object.id = id;
-  object.intensity = reader.readLongOrNull(offsets[4]);
-  object.location = reader.readStringOrNull(offsets[8]);
-  object.mood = _LogEntrymoodValueEnumMap[reader.readStringOrNull(offsets[9])];
-  object.notes = reader.readStringOrNull(offsets[10]);
-  object.quantity = reader.readLongOrNull(offsets[11]);
-  object.timestamp = reader.readDateTime(offsets[12]);
-  object.triggers = reader.readStringList(offsets[13]) ?? [];
+  object.intensity = reader.readLongOrNull(offsets[5]);
+  object.location = reader.readStringOrNull(offsets[9]);
+  object.mood = _LogEntrymoodValueEnumMap[reader.readStringOrNull(offsets[10])];
+  object.notes = reader.readStringOrNull(offsets[11]);
+  object.quantity = reader.readLongOrNull(offsets[12]);
+  object.timestamp = reader.readDateTime(offsets[13]);
+  object.triggers = reader.readStringList(offsets[14]) ?? [];
   object.type =
-      _LogEntrytypeValueEnumMap[reader.readStringOrNull(offsets[14])] ??
-          LogType.cigarette;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[15]);
-  object.userId = reader.readString(offsets[16]);
-  object.wasResisted = reader.readBoolOrNull(offsets[17]);
+      _LogEntrytypeValueEnumMap[reader.readStringOrNull(offsets[15])] ??
+          LogType.cravingLogged;
+  object.updatedAt = reader.readDateTimeOrNull(offsets[16]);
+  object.userId = reader.readString(offsets[17]);
+  object.wasResisted = reader.readBoolOrNull(offsets[18]);
   return object;
 }
 
@@ -240,37 +247,39 @@ P _logEntryDeserializeProp<P>(
     case 1:
       return (reader.readLongOrNull(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 6:
       return (reader.readBool(offset)) as P;
     case 7:
       return (reader.readBool(offset)) as P;
     case 8:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 9:
-      return (_LogEntrymoodValueEnumMap[reader.readStringOrNull(offset)]) as P;
-    case 10:
       return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (_LogEntrymoodValueEnumMap[reader.readStringOrNull(offset)]) as P;
     case 11:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 13:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readDateTime(offset)) as P;
     case 14:
-      return (_LogEntrytypeValueEnumMap[reader.readStringOrNull(offset)] ??
-          LogType.cigarette) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 15:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (_LogEntrytypeValueEnumMap[reader.readStringOrNull(offset)] ??
+          LogType.cravingLogged) as P;
     case 16:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
       return (reader.readBoolOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -292,16 +301,32 @@ const _LogEntrymoodValueEnumMap = {
   r'veryGood': MoodType.veryGood,
 };
 const _LogEntrytypeEnumValueMap = {
-  r'cigarette': r'cigarette',
-  r'episode': r'episode',
-  r'craving': r'craving',
-  r'relapse': r'relapse',
+  r'cravingLogged': r'cravingLogged',
+  r'cravingDelayed': r'cravingDelayed',
+  r'lapse': r'lapse',
+  r'triggerObserved': r'triggerObserved',
+  r'copingAction': r'copingAction',
+  r'lapseRecovery': r'lapseRecovery',
+  r'dailyCheckin': r'dailyCheckin',
+  r'journalEntry': r'journalEntry',
+  r'cigaretteSmoked': r'cigaretteSmoked',
+  r'replacementAction': r'replacementAction',
+  r'urgeEpisode': r'urgeEpisode',
+  r'pornExposure': r'pornExposure',
 };
 const _LogEntrytypeValueEnumMap = {
-  r'cigarette': LogType.cigarette,
-  r'episode': LogType.episode,
-  r'craving': LogType.craving,
-  r'relapse': LogType.relapse,
+  r'cravingLogged': LogType.cravingLogged,
+  r'cravingDelayed': LogType.cravingDelayed,
+  r'lapse': LogType.lapse,
+  r'triggerObserved': LogType.triggerObserved,
+  r'copingAction': LogType.copingAction,
+  r'lapseRecovery': LogType.lapseRecovery,
+  r'dailyCheckin': LogType.dailyCheckin,
+  r'journalEntry': LogType.journalEntry,
+  r'cigaretteSmoked': LogType.cigaretteSmoked,
+  r'replacementAction': LogType.replacementAction,
+  r'urgeEpisode': LogType.urgeEpisode,
+  r'pornExposure': LogType.pornExposure,
 };
 
 Id _logEntryGetId(LogEntry object) {
@@ -483,6 +508,79 @@ extension LogEntryQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition>
+      distressRatingIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'distressRating',
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition>
+      distressRatingIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'distressRating',
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition> distressRatingEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'distressRating',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition>
+      distressRatingGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'distressRating',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition>
+      distressRatingLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'distressRating',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterFilterCondition> distressRatingBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'distressRating',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -2142,6 +2240,18 @@ extension LogEntryQuerySortBy on QueryBuilder<LogEntry, LogEntry, QSortBy> {
     });
   }
 
+  QueryBuilder<LogEntry, LogEntry, QAfterSortBy> sortByDistressRating() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distressRating', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterSortBy> sortByDistressRatingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distressRating', Sort.desc);
+    });
+  }
+
   QueryBuilder<LogEntry, LogEntry, QAfterSortBy> sortByDurationSeconds() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'durationSeconds', Sort.asc);
@@ -2346,6 +2456,18 @@ extension LogEntryQuerySortThenBy
   QueryBuilder<LogEntry, LogEntry, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterSortBy> thenByDistressRating() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distressRating', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LogEntry, LogEntry, QAfterSortBy> thenByDistressRatingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distressRating', Sort.desc);
     });
   }
 
@@ -2562,6 +2684,12 @@ extension LogEntryQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LogEntry, LogEntry, QDistinct> distinctByDistressRating() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'distressRating');
+    });
+  }
+
   QueryBuilder<LogEntry, LogEntry, QDistinct> distinctByDurationSeconds() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'durationSeconds');
@@ -2685,6 +2813,12 @@ extension LogEntryQueryProperty
   QueryBuilder<LogEntry, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<LogEntry, int?, QQueryOperations> distressRatingProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'distressRating');
     });
   }
 

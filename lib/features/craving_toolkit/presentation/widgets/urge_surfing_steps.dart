@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../../core/theme/app_theme.dart';
-import 'dart:math' as Math;
+import 'dart:math' as math;
 
 
 class UrgeSurfingSteps extends StatefulWidget {
@@ -12,13 +12,13 @@ class UrgeSurfingSteps extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const UrgeSurfingSteps({
-    Key? key,
+    super.key,
     required this.currentStep,
     required this.pageController,
     required this.onNext,
     required this.onPrevious,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<UrgeSurfingSteps> createState() => _UrgeSurfingStepsState();
@@ -85,7 +85,7 @@ class _UrgeSurfingStepsState extends State<UrgeSurfingSteps> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Column(
@@ -198,7 +198,7 @@ class _UrgeSurfingStepsState extends State<UrgeSurfingSteps> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.successColor.withOpacity(0.1),
+              color: AppTheme.successColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
@@ -283,7 +283,7 @@ class _UrgeSurfingStepsState extends State<UrgeSurfingSteps> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -322,7 +322,7 @@ class _UrgeSurfingStepsState extends State<UrgeSurfingSteps> {
     return Container(
       height: 150,
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: CustomPaint(
@@ -395,7 +395,7 @@ class _UrgeSurfingStepsState extends State<UrgeSurfingSteps> {
     final seconds = _timeRemaining % 60;
 
     return Card(
-      color: AppTheme.primaryColor.withOpacity(0.1),
+      color: AppTheme.primaryColor.withValues(alpha:0.1),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -512,7 +512,7 @@ class WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.primaryColor.withOpacity(0.3)
+      ..color = AppTheme.primaryColor.withValues(alpha:0.3)
       ..style = PaintingStyle.fill;
 
     final path = Path();
@@ -522,7 +522,7 @@ class WavePainter extends CustomPainter {
     for (double i = 0; i <= size.width; i++) {
       final progress = i / size.width;
       final y = size.height * 0.7 +
-          20 * Math.sin(progress * 2 * Math.pi) *
+          20 * math.sin(progress * 2 * math.pi) *
               (1 - (progress - 0.5).abs() * 2);
       path.lineTo(i, y);
     }

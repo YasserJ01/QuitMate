@@ -4,9 +4,9 @@ class DistractionChooserScreen extends StatelessWidget {
   final int? cravingId;
 
   const DistractionChooserScreen({
-    Key? key,
+    super.key,
     this.cravingId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

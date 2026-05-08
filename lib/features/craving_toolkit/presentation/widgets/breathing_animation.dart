@@ -8,11 +8,11 @@ class BreathingAnimation extends StatefulWidget {
   final BreathingPattern pattern;
 
   const BreathingAnimation({
-    Key? key,
+    super.key,
     required this.phase,
     required this.secondsRemaining,
     required this.pattern,
-  }) : super(key: key);
+  });
 
   @override
   State<BreathingAnimation> createState() => _BreathingAnimationState();
@@ -111,8 +111,8 @@ class _BreathingAnimationState extends State<BreathingAnimation>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.white.withOpacity(0.0),
-                    Colors.white.withOpacity(0.1 * _opacityAnimation.value),
+                    Colors.white.withValues(alpha:0.0),
+                    Colors.white.withValues(alpha:0.1 * _opacityAnimation.value),
                   ],
                 ),
               ),
@@ -126,8 +126,8 @@ class _BreathingAnimationState extends State<BreathingAnimation>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.white.withOpacity(0.1 * _opacityAnimation.value),
-                    Colors.white.withOpacity(0.2 * _opacityAnimation.value),
+                    Colors.white.withValues(alpha:0.1 * _opacityAnimation.value),
+                    Colors.white.withValues(alpha:0.2 * _opacityAnimation.value),
                   ],
                 ),
               ),
@@ -149,10 +149,10 @@ class _BreathingAnimationState extends State<BreathingAnimation>
               height: 180 * _scaleAnimation.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.9 * _opacityAnimation.value),
+                color: Colors.white.withValues(alpha:0.9 * _opacityAnimation.value),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.5 * _opacityAnimation.value),
+                    color: Colors.white.withValues(alpha:0.5 * _opacityAnimation.value),
                     blurRadius: 30,
                     spreadRadius: 10,
                   ),
@@ -162,7 +162,7 @@ class _BreathingAnimationState extends State<BreathingAnimation>
                 child: Icon(
                   _getPhaseIcon(),
                   size: 60,
-                  color: Colors.blue.withOpacity(0.8),
+                  color: Colors.blue.withValues(alpha:0.8),
                 ),
               ),
             ),
@@ -206,7 +206,7 @@ class BreathingCirclePainter extends CustomPainter {
     // Draw particles around circle
     const particleCount = 12;
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.6 * opacity)
+      ..color = Colors.white.withValues(alpha:0.6 * opacity)
       ..style = PaintingStyle.fill;
 
     for (int i = 0; i < particleCount; i++) {
@@ -225,7 +225,7 @@ class BreathingCirclePainter extends CustomPainter {
 
     // Draw animated arcs
     final arcPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3 * opacity)
+      ..color = Colors.white.withValues(alpha:0.3 * opacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 

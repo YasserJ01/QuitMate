@@ -10,7 +10,7 @@ import '../../services/export_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DetailedStatsScreen extends ConsumerStatefulWidget {
-  const DetailedStatsScreen({Key? key}) : super(key: key);
+  const DetailedStatsScreen({super.key});
 
   @override
   ConsumerState<DetailedStatsScreen> createState() => _DetailedStatsScreenState();
@@ -382,8 +382,8 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              color.withOpacity(0.1),
-              color.withOpacity(0.05),
+              color.withValues(alpha:0.1),
+              color.withValues(alpha:0.05),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -398,7 +398,7 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: color, size: 24),

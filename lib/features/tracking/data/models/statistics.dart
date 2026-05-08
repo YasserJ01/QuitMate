@@ -24,7 +24,7 @@ class Statistics {
   // Trend data
   final Map<DateTime, int> dailyCounts;
   final Map<String, int> triggerFrequency;
-  final Map<int, int> hourlyDistribution; // Hour of day -> count
+  final Map<int, int> hourlyDistribution;
 
   // Success rates
   final double cravingResistanceRate;
@@ -32,7 +32,13 @@ class Statistics {
 
   // Health metrics (for smoking)
   final int cigarettesAvoided;
-  final double lifeMinutesGained; // Approximate
+  final double lifeMinutesGained;
+
+  // ── New fields per enhancement plan ───────────────────────────────────
+  final int recoveryCount;
+  final int? timeReclaimedMinutes; // null when profile data insufficient
+  final int? episodesAvoided; // null when profile data insufficient
+  final List<double> distressTrend; // last 7 daily distress ratings
 
   const Statistics({
     required this.currentStreak,
@@ -56,6 +62,10 @@ class Statistics {
     required this.weeklyImprovement,
     required this.cigarettesAvoided,
     required this.lifeMinutesGained,
+    this.recoveryCount = 0,
+    this.timeReclaimedMinutes,
+    this.episodesAvoided,
+    this.distressTrend = const [],
   });
 
   Statistics copyWith({
@@ -80,6 +90,10 @@ class Statistics {
     double? weeklyImprovement,
     int? cigarettesAvoided,
     double? lifeMinutesGained,
+    int? recoveryCount,
+    int? timeReclaimedMinutes,
+    int? episodesAvoided,
+    List<double>? distressTrend,
   }) {
     return Statistics(
       currentStreak: currentStreak ?? this.currentStreak,
@@ -103,6 +117,10 @@ class Statistics {
       weeklyImprovement: weeklyImprovement ?? this.weeklyImprovement,
       cigarettesAvoided: cigarettesAvoided ?? this.cigarettesAvoided,
       lifeMinutesGained: lifeMinutesGained ?? this.lifeMinutesGained,
+      recoveryCount: recoveryCount ?? this.recoveryCount,
+      timeReclaimedMinutes: timeReclaimedMinutes ?? this.timeReclaimedMinutes,
+      episodesAvoided: episodesAvoided ?? this.episodesAvoided,
+      distressTrend: distressTrend ?? this.distressTrend,
     );
   }
 
@@ -127,6 +145,10 @@ class Statistics {
       weeklyImprovement: 0,
       cigarettesAvoided: 0,
       lifeMinutesGained: 0,
+      recoveryCount: 0,
+      timeReclaimedMinutes: null,
+      episodesAvoided: null,
+      distressTrend: [],
     );
   }
 }
@@ -184,7 +206,7 @@ enum TimeRange {
       case TimeRange.year:
         return now.subtract(const Duration(days: 365));
       case TimeRange.all:
-        return DateTime(2000); // Far past date
+        return DateTime(2000);
     }
   }
 }

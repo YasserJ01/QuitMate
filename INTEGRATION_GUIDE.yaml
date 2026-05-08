@@ -1,0 +1,97 @@
+# ─── pubspec.yaml additions ────────────────────────────────────────────────────
+# Add these to your existing pubspec.yaml dependencies block.
+# REMOVE: firebase_messaging (no longer needed — fully offline)
+
+dependencies:
+  flutter_local_notifications: ^17.2.2   # local scheduling, works offline
+  timezone: ^0.9.4                        # required by flutter_local_notifications
+  intl: ^0.19.0                           # date formatting in history screen
+
+# ─── Android setup ──────────────────────────────────────────────────────────────
+# android/app/src/main/AndroidManifest.xml  — add inside <manifest>:
+#
+#   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+#   <uses-permission android:name="android.permission.VIBRATE"/>
+#   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+#   <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>   <!-- API 31+ -->
+#   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+#
+# Inside <application>:
+#   <receiver android:exported="false"
+#     android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver">
+#     <intent-filter>
+#       <action android:name="android.intent.action.BOOT_COMPLETED"/>
+#       <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+#     </intent-filter>
+#   </receiver>
+#   <receiver android:exported="false"
+#     android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+#     <intent-filter>
+#       <action android:name="android.intent.action.BOOT_COMPLETED"/>
+#     </intent-filter>
+#   </receiver>
+
+# ─── iOS setup ─────────────────────────────────────────────────────────────────
+# ios/Runner/AppDelegate.swift — no special changes needed beyond the plugin.
+# Capabilities: Background Modes > "Background fetch" (optional for inactivity check).
+
+# ─── Timezone initialisation ────────────────────────────────────────────────────
+# In main.dart, before runApp():
+#
+#   import 'package:timezone/data/latest.dart' as tz;
+#   import 'package:timezone/timezone.dart' as tz;
+#   import 'package:flutter_timezone/flutter_timezone.dart';
+#
+#   Future<void> _configureLocalTimeZone() async {
+#     tz.initializeTimeZones();
+#     final timeZoneName = await FlutterTimezone.getLocalTimezone();
+#     tz.setLocalLocation(tz.getLocation(timeZoneName));
+#   }
+#
+#   void main() async {
+#     WidgetsFlutterBinding.ensureInitialized();
+#     await _configureLocalTimeZone();
+#     runApp(const ProviderScope(child: App()));
+#   }
+
+# ─── Integration guide ──────────────────────────────────────────────────────────
+#
+# 1. Bootstrap (call once, e.g. on app startup or after onboarding):
+#
+#      final manager = await ref.read(notificationManagerProvider.future);
+#      final granted = await manager.requestPermissions();
+#      if (granted) await manager.scheduleAll(userId);
+#
+# 2. Reschedule after preferences change (handled automatically by savePreferences).
+#
+# 3. Fire event hooks from tracking feature:
+#
+#      // When user logs a craving:
+#      ref.read(notificationManagerProvider).whenData((m) => m.onCravingLogged(userId));
+#
+#      // When user resists a craving:
+#      ref.read(notificationManagerProvider).whenData((m) => m.onCravingResisted(userId));
+#
+#      // When streak milestone detected:
+#      ref.read(notificationManagerProvider).whenData((m) => m.onStreakMilestone(userId, 7));
+#
+# 4. Navigate to settings:
+#
+#      Navigator.push(context, MaterialPageRoute(
+#        builder: (_) => const NotificationSettingsScreen(),
+#      ));
+#
+# 5. Navigate to history:
+#
+#      Navigator.push(context, MaterialPageRoute(
+#        builder: (_) => const NotificationHistoryScreen(),
+#      ));
+#
+# 6. Handle notification taps (deep-link routing):
+#
+#      ref.read(notificationManagerProvider).whenData((manager) {
+#        manager.onTap.listen((tap) {
+#          final payload = tap.payload; // e.g. "type=craving_support&action=open_toolkit"
+#          // parse and navigate accordingly
+#        });
+#      });

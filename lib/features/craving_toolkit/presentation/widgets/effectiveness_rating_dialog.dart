@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class EffectivenessRatingDialog extends StatefulWidget {
-  const EffectivenessRatingDialog({Key? key}) : super(key: key);
+  const EffectivenessRatingDialog({super.key});
 
   @override
   State<EffectivenessRatingDialog> createState() =>

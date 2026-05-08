@@ -5,7 +5,7 @@ import 'package:quitmate/core/theme/app_theme.dart';
 import 'goal_selection_screen.dart';
 
 class WelcomeScreen extends ConsumerWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,13 +25,13 @@ class WelcomeScreen extends ConsumerWidget {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.favorite_rounded,
                     size: 60,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha:0.9),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -51,7 +51,7 @@ class WelcomeScreen extends ConsumerWidget {
                 Text(
                   AppStrings.welcomeSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha:0.9),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -130,7 +130,7 @@ class WelcomeScreen extends ConsumerWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha:0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -155,7 +155,7 @@ class WelcomeScreen extends ConsumerWidget {
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha:0.8),
                   fontSize: 14,
                 ),
               ),

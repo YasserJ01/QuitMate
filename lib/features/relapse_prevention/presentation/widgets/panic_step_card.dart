@@ -8,11 +8,11 @@ class PanicStepCard extends StatelessWidget {
   final VoidCallback onActionTap;
 
   const PanicStepCard({
-    Key? key,
+    super.key,
     required this.step,
     required this.stepNumber,
     required this.onActionTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class PanicStepCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: _getStepColor().withOpacity(0.3),
+          color: _getStepColor().withValues(alpha:0.3),
           width: 2,
         ),
       ),

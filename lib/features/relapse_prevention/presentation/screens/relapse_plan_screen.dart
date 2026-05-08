@@ -9,7 +9,7 @@ import '../widgets/contact_card.dart';
 import 'edit_panic_steps_screen.dart';
 
 class RelapsePlanScreen extends ConsumerStatefulWidget {
-  const RelapsePlanScreen({Key? key}) : super(key: key);
+  const RelapsePlanScreen({super.key});
 
   @override
   ConsumerState<RelapsePlanScreen> createState() => _RelapsePlanScreenState();
@@ -129,7 +129,7 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color: AppTheme.primaryColor.withValues(alpha:0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -154,7 +154,7 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -232,7 +232,7 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),

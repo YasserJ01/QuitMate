@@ -5,16 +5,22 @@ import '../../services/statistics_calculator.dart';
 
 class StreakCard extends StatelessWidget {
   final Statistics statistics;
+  final DateTime? quitDate;
 
   const StreakCard({
-    Key? key,
+    super.key,
     required this.statistics,
-  }) : super(key: key);
+    this.quitDate,
+  });
 
   @override
   Widget build(BuildContext context) {
     final milestone = StatisticsCalculator.getNextMilestone(statistics.currentStreak);
     final progress = statistics.currentStreak / (milestone['days'] as int);
+    final streakDisplay = StatisticsCalculator.formatStreakDisplay(
+      statistics.currentStreak,
+      quitDate,
+    );
 
     return Card(
       child: Container(
@@ -25,26 +31,23 @@ class StreakCard extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Streak flame icon
+            // Streak icon
             Container(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text(
-                  '🔥',
-                  style: TextStyle(fontSize: 48),
-                ),
+                child: Text('🔥', style: TextStyle(fontSize: 48)),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Current streak
+            // Current streak — displays hours when <1 day
             Text(
-              '${statistics.currentStreak}',
+              streakDisplay,
               style: const TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
@@ -70,14 +73,14 @@ class StreakCard extends StatelessWidget {
                     Text(
                       'Next: ${milestone['name']} ${milestone['emoji']}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha:0.9),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       '${milestone['daysRemaining']} days',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha:0.9),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -88,7 +91,7 @@ class StreakCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0),
-                    backgroundColor: Colors.white.withOpacity(0.3),
+                    backgroundColor: Colors.white.withValues(alpha:0.3),
                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 8,
                   ),
@@ -97,25 +100,40 @@ class StreakCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Longest streak
+            // Longest streak + recovery count
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  const Icon(Icons.emoji_events, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Best: ${statistics.longestStreak} days',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.emoji_events, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Best: ${statistics.longestStreak} days',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
+                  // Recovery count — framed positively (SRS §8.4)
+                  if (statistics.recoveryCount > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'You have recovered ${statistics.recoveryCount} ${statistics.recoveryCount == 1 ? "time" : "times"}.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha:0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

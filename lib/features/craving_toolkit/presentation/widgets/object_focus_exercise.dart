@@ -6,9 +6,9 @@ class ObjectFocusExercise extends StatefulWidget {
   final Function(Map<String, dynamic>) onComplete;
 
   const ObjectFocusExercise({
-    Key? key,
+    super.key,
     required this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<ObjectFocusExercise> createState() => _ObjectFocusExerciseState();
@@ -108,10 +108,10 @@ class _ObjectFocusExerciseState extends State<ObjectFocusExercise> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.warningColor.withOpacity(0.1),
+              color: AppTheme.warningColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.warningColor.withOpacity(0.3),
+                color: AppTheme.warningColor.withValues(alpha:0.3),
                 width: 2,
               ),
             ),
@@ -234,7 +234,7 @@ class _ObjectFocusExerciseState extends State<ObjectFocusExercise> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(

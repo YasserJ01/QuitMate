@@ -4,14 +4,18 @@ import '../../data/models/statistics.dart';
 
 class SavingsCard extends StatelessWidget {
   final Statistics statistics;
+  final bool hasData; // gates on completeness.hasMoneySavingsData
 
   const SavingsCard({
-    Key? key,
+    super.key,
     required this.statistics,
-  }) : super(key: key);
+    this.hasData = true,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (!hasData) return const SizedBox.shrink();
+
     return Card(
       child: Container(
         decoration: BoxDecoration(
@@ -34,7 +38,7 @@ class SavingsCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -55,7 +59,6 @@ class SavingsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
             Text(
               '\$${statistics.moneySaved.toStringAsFixed(2)}',
               style: const TextStyle(
@@ -65,21 +68,18 @@ class SavingsCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-
             Text(
               'Out of \$${statistics.potentialMoneySaved.toStringAsFixed(2)} potential',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha:0.9),
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 16),
-
-            // What you could buy
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -89,10 +89,7 @@ class SavingsCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _getSavingsMessage(statistics.moneySaved),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ),
                 ],

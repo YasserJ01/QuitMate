@@ -11,10 +11,10 @@ class BreathingExerciseScreen extends ConsumerStatefulWidget {
   final int? cravingId;
 
   const BreathingExerciseScreen({
-    Key? key,
+    super.key,
     required this.pattern,
     this.cravingId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<BreathingExerciseScreen> createState() =>
@@ -49,13 +49,15 @@ class _BreathingExerciseScreenState
       },
     );
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (state.isRunning) {
+    return PopScope(
+      canPop: !state.isRunning,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
           final shouldExit = await _showExitConfirmation();
-          return shouldExit ?? false;
+          if (shouldExit == true && context.mounted) {
+            Navigator.pop(context);
+          }
         }
-        return true;
       },
       child: Scaffold(
         backgroundColor: AppTheme.primaryColor,
@@ -67,7 +69,7 @@ class _BreathingExerciseScreenState
             onPressed: () async {
               if (state.isRunning) {
                 final shouldExit = await _showExitConfirmation();
-                if (shouldExit == true && mounted) {
+                if (shouldExit == true && context.mounted) {
                   Navigator.pop(context);
                 }
               } else {
@@ -128,7 +130,7 @@ class _BreathingExerciseScreenState
                   Text(
                     widget.pattern.description,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 16,
                     ),
                     textAlign: TextAlign.center,
@@ -137,7 +139,7 @@ class _BreathingExerciseScreenState
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -163,7 +165,7 @@ class _BreathingExerciseScreenState
                 Text(
                   'Durations are aligned to full cycles.',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 12,
                   ),
                 ),
@@ -174,7 +176,7 @@ class _BreathingExerciseScreenState
                   Text(
                     'Duration',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 16,
                     ),
                   ),
@@ -236,7 +238,7 @@ class _BreathingExerciseScreenState
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: isTotal ? 18 : 16,
             fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -261,7 +263,7 @@ class _BreathingExerciseScreenState
         : seconds + ((cycleSeconds - (seconds % cycleSeconds)) % cycleSeconds);
     final displayLabel = alignedSeconds == seconds
         ? label
-        : '${label} (${_formatTime(alignedSeconds)})';
+        : '$label (${_formatTime(alignedSeconds)})';
     return ChoiceChip(
       label: Text(displayLabel),
       selected: isSelected,
@@ -276,7 +278,7 @@ class _BreathingExerciseScreenState
         }
       },
       selectedColor: Colors.white,
-      backgroundColor: Colors.white.withOpacity(0.2),
+      backgroundColor: Colors.white.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         color: isSelected ? AppTheme.primaryColor : Colors.white,
         fontWeight: FontWeight.w600,
@@ -290,7 +292,7 @@ class _BreathingExerciseScreenState
         // Progress bar
         LinearProgressIndicator(
           value: state.progress,
-          backgroundColor: Colors.white.withOpacity(0.2),
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
           valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
           minHeight: 4,
         ),
@@ -307,7 +309,7 @@ class _BreathingExerciseScreenState
                         .clamp(0, state.targetDuration),
                   ),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 18,
                   ),
                 ),
@@ -317,7 +319,7 @@ class _BreathingExerciseScreenState
                 Text(
                   'Cycle ${state.currentCycle + 1}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -348,7 +350,7 @@ class _BreathingExerciseScreenState
                 Text(
                   '${state.phaseSecondsRemaining}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 48,
                     fontWeight: FontWeight.w300,
                   ),
@@ -414,7 +416,7 @@ class _BreathingExerciseScreenState
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -439,7 +441,7 @@ class _BreathingExerciseScreenState
           Text(
             'You completed ${state.currentCycle} breathing cycles',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 16,
             ),
           ),
@@ -449,7 +451,7 @@ class _BreathingExerciseScreenState
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -529,7 +531,7 @@ class _BreathingExerciseScreenState
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: 16,
           ),
         ),

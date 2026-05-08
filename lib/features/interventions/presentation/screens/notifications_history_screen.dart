@@ -23,7 +23,7 @@ class NotificationHistoryScreen extends ConsumerWidget {
           // Stats banner
           stats.when(
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
             data: (s) => _StatsBanner(stats: s),
           ),
           // History list
@@ -53,7 +53,7 @@ class _StatsBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      color: scheme.primaryContainer.withOpacity(0.4),
+      color: scheme.primaryContainer.withValues(alpha:0.4),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -102,7 +102,7 @@ class _HistoryList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+      separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
       itemBuilder: (ctx, i) => _HistoryTile(item: items[i]),
     );
   }
@@ -120,7 +120,7 @@ class _HistoryTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor:
-        _typeColor(item.type, scheme).withOpacity(0.15),
+        _typeColor(item.type, scheme).withValues(alpha:0.15),
         child: Icon(_typeIcon(item.type),
             size: 20, color: _typeColor(item.type, scheme)),
       ),
@@ -187,7 +187,7 @@ class _EmptyState extends StatelessWidget {
               color: Theme.of(context)
                   .colorScheme
                   .onSurface
-                  .withOpacity(0.3)),
+                  .withValues(alpha:0.3)),
           const SizedBox(height: 16),
           Text('No messages yet',
               style: Theme.of(context).textTheme.titleMedium),

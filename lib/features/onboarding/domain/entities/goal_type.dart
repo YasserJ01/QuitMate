@@ -1,16 +1,13 @@
 enum GoalType {
   quitSmoking,
-  reduceMasturbation,
-  both;
+  reduceMasturbation;
 
   String get displayName {
     switch (this) {
       case GoalType.quitSmoking:
         return 'Quit Smoking';
       case GoalType.reduceMasturbation:
-        return 'Reduce Masturbation';
-      case GoalType.both:
-        return 'Both Goals';
+        return 'My Focus Journey';
     }
   }
 
@@ -20,8 +17,26 @@ enum GoalType {
         return '🚭';
       case GoalType.reduceMasturbation:
         return '🎯';
-      case GoalType.both:
-        return '💪';
+    }
+  }
+
+  String get shortDescription {
+    switch (this) {
+      case GoalType.quitSmoking:
+        return 'Break free from nicotine addiction and improve your health';
+      case GoalType.reduceMasturbation:
+        return 'Build healthier habits and improve self-control';
+    }
+  }
+
+  String get extendedDescription {
+    switch (this) {
+      case GoalType.quitSmoking:
+        return 'Track cigarettes, cravings, and money saved. '
+            'Get personalized health milestones and craving support.';
+      case GoalType.reduceMasturbation:
+        return 'Track urges, build resilience, and reconnect with your values. '
+            'Get distress trends and a personalized values anchor.';
     }
   }
 }
