@@ -6,7 +6,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../onboarding/data/models/user_profile.dart';
 import '../../../onboarding/domain/services/profile_completeness_service.dart';
 import '../../../onboarding/presentation/providers/profile_completeness_provider.dart';
+import '../../../onboarding/presentation/screens/edit_profile_screen.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
+import '../../data/models/statistics.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/streak_card.dart';
 import '../widgets/time_reclaimed_card.dart';
@@ -26,7 +28,7 @@ class ReductionDashboard extends ConsumerWidget {
 
     return completenessAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) =>
+      error: (e, _) =>
           _buildContent(context, ref, stats, ProfileCompleteness.empty()),
       data: (completeness) =>
           _buildContent(context, ref, stats, completeness),
@@ -36,7 +38,7 @@ class ReductionDashboard extends ConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     WidgetRef ref,
-    dynamic stats,
+    Statistics stats,
     ProfileCompleteness completeness,
   ) {
     return ListView(
@@ -66,7 +68,7 @@ class ReductionDashboard extends ConsumerWidget {
 
         // Hero Streak Section — calm leaf/shield icon
         StreakCard(
-          statistics: stats as dynamic,
+          statistics: stats,
           quitDate: profile.quitDate,
         ),
         const SizedBox(height: 16),
@@ -94,7 +96,7 @@ class ReductionDashboard extends ConsumerWidget {
                       Text('Urges Resisted',
                           style: Theme.of(context).textTheme.titleMedium),
                       Text(
-                        '${(stats as dynamic).cravingsResisted}',
+                        '${stats.cravingsResisted}',
                         style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -111,25 +113,44 @@ class ReductionDashboard extends ConsumerWidget {
 
         // Time Reclaimed card — only if data available
         if (completeness.hasTimeReclaimData) ...[
-          TimeReclaimedCard(statistics: stats as dynamic),
+          TimeReclaimedCard(statistics: stats),
           const SizedBox(height: 16),
         ] else ...[
           ProfileNudgeCard(
-            message:
-                'Add episode duration to see time reclaimed',
+            message: 'Add episode duration to see time reclaimed',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EditProfileScreen(
+                  section: ProfileSection.reductionDetails,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
         ],
 
-        // Values Anchor Card — shown if values are set
+        // Values Anchor Card — shown if values are set; nudge to set them if not
         if (completeness.hasValuesData && profile.values.isNotEmpty)
-          _ValuesAnchorCard(values: profile.values),
+          _ValuesAnchorCard(values: profile.values)
+        else
+          ProfileNudgeCard(
+            message: 'Add your values to see them on your dashboard',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EditProfileScreen(
+                  section: ProfileSection.valuesSection,
+                ),
+              ),
+            ),
+          ),
         const SizedBox(height: 16),
 
         // Distress Trend — only if >=3 data points (FR-P03)
         if (completeness.hasDistressBaseline &&
-            (stats as dynamic).distressTrend.length >= 3)
-          _DistressTrendCard(trend: (stats as dynamic).distressTrend),
+            stats.distressTrend.length >= 3)
+          _DistressTrendCard(trend: stats.distressTrend),
         const SizedBox(height: 16),
 
         // Quick Actions Row

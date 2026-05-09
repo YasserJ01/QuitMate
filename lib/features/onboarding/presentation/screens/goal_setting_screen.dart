@@ -70,8 +70,16 @@ class _GoalSettingScreenState extends ConsumerState<GoalSettingScreen> {
 
     if (!_isAbstinenceGoal) {
       final target = int.tryParse(_frequencyTargetController.text);
-      if (target != null && target > 0) {
+      if (target != null && target >= 0) {
         notifier.setFrequencyTarget(target);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a valid target frequency'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
       }
     }
 
@@ -143,38 +151,26 @@ class _GoalSettingScreenState extends ConsumerState<GoalSettingScreen> {
                 const SizedBox(height: 32),
 
                 // Goal type selection
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                RadioGroup<bool>(
+                  groupValue: _isAbstinenceGoal,
+                  onChanged: (v) {
+                    if (v != null) setState(() => _isAbstinenceGoal = v);
+                  },
+                  child: Card(
                     child: Column(
                       children: [
-                        RadioGroup<bool>(
-                          groupValue: _isAbstinenceGoal,
-                          onChanged: (v) {
-                            if (v != null) {
-                              setState(() => _isAbstinenceGoal = v);
-                            }
-                          },
-                          child: Column(
-                            children: [
-                              ListTile(
-                                title: const Text('Full abstinence'),
-                                subtitle: const Text(
-                                    'Stop completely and count every day clean'),
-                                leading: Radio<bool>(value: true),
-                                onTap: () => setState(() => _isAbstinenceGoal = true),
-                              ),
-                              const Divider(),
-                              ListTile(
-                                title: const Text('Frequency target'),
-                                subtitle: const Text(
-                                    'Reduce to a specific number per week'),
-                                leading: Radio<bool>(value: false),
-                                onTap: () =>
-                                    setState(() => _isAbstinenceGoal = false),
-                              ),
-                            ],
-                          ),
+                        RadioListTile<bool>(
+                          title: const Text('Full abstinence'),
+                          subtitle: const Text(
+                              'Stop completely and count every day clean'),
+                          value: true,
+                        ),
+                        const Divider(height: 1),
+                        RadioListTile<bool>(
+                          title: const Text('Frequency target'),
+                          subtitle: const Text(
+                              'Reduce to a specific number per week'),
+                          value: false,
                         ),
                       ],
                     ),
