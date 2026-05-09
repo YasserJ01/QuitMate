@@ -475,7 +475,14 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   bool canCompleteOnboarding() {
-    return state.quitDate != null;
+    if (state.quitDate == null) return false;
+
+    // In reduction mode, if not an abstinence goal, they must have a valid frequency target
+    if (state.goalType == GoalType.reduceMasturbation && !state.isAbstinenceGoal) {
+      return state.frequencyTarget != null && state.frequencyTarget! >= 0;
+    }
+
+    return true;
   }
 }
 

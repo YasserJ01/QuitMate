@@ -4,7 +4,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../onboarding/data/models/user_profile.dart';
 import '../../../onboarding/domain/services/profile_completeness_service.dart';
 import '../../../onboarding/presentation/providers/profile_completeness_provider.dart';
+import '../../../onboarding/presentation/screens/edit_profile_screen.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
+import '../../data/models/statistics.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/streak_card.dart';
 import '../widgets/stats_summary_card.dart';
@@ -26,14 +28,14 @@ class SmokingDashboard extends ConsumerWidget {
 
     return completenessAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => _buildContent(context, stats, ProfileCompleteness.empty()),
+      error: (e, _) => _buildContent(context, stats, ProfileCompleteness.empty()),
       data: (completeness) => _buildContent(context, stats, completeness),
     );
   }
 
   Widget _buildContent(
     BuildContext context,
-    dynamic stats,
+    Statistics stats,
     ProfileCompleteness completeness,
   ) {
     return ListView(
@@ -63,36 +65,49 @@ class SmokingDashboard extends ConsumerWidget {
 
         // Hero Streak Section
         StreakCard(
-          statistics: stats as dynamic,
+          statistics: stats,
           quitDate: profile.quitDate,
         ),
         const SizedBox(height: 16),
 
         // Stats Row
-        StatsSummaryCard(statistics: stats as dynamic),
+        StatsSummaryCard(statistics: stats),
         const SizedBox(height: 16),
 
         // Money Saved card — gated on completeness
         if (completeness.hasMoneySavingsData) ...[
-          SavingsCard(statistics: stats as dynamic),
+          SavingsCard(statistics: stats),
           const SizedBox(height: 16),
         ] else ...[
           ProfileNudgeCard(
             message: 'Add your cigarette cost to see money saved',
-            onTap: () {
-              // TODO: Navigate to EditProfileScreen(section: smokingCosts)
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EditProfileScreen(
+                  section: ProfileSection.smokingCosts,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
         ],
 
         // Health Metrics — gated on completeness
         if (completeness.hasHealthMilestoneData) ...[
-          HealthMetricsCard(statistics: stats as dynamic),
+          HealthMetricsCard(statistics: stats),
           const SizedBox(height: 16),
         ] else ...[
           ProfileNudgeCard(
             message: 'Add cigarettes per day to see health milestones',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EditProfileScreen(
+                  section: ProfileSection.smokingDetails,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
         ],
