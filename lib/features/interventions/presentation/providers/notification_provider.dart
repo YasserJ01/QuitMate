@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/notification_models.dart';
 import '../../data/repositories/notification_repository.dart';
@@ -66,12 +67,19 @@ FutureProvider.autoDispose<NotificationStats>((ref) async {
 
 class NotificationPreferencesNotifier
     extends AutoDisposeAsyncNotifier<NotificationPreferences> {
+  Timer? _saveDebounce;
+  bool _isDisposed = false;
+
   @override
   Future<NotificationPreferences> build() async {
+    ref.onDispose(() {
+      _isDisposed = true;
+      _saveDebounce?.cancel();
+    });
     final manager = await ref.watch(notificationManagerProvider.future);
-    final userId = ref.watch(currentUserIdProvider).valueOrNull ?? '';
-    
-    if (userId.isEmpty) {
+    final userId = await ref.watch(currentUserIdProvider.future);
+
+    if (userId == null || userId.isEmpty) {
       return NotificationPreferences()..userId = '';
     }
     
@@ -127,14 +135,18 @@ class NotificationPreferencesNotifier
     
     mutate(current);
     state = AsyncValue.data(current);
-    
-    try {
-      final manager = await ref.read(notificationManagerProvider.future);
-      await manager.savePreferences(current);
-    } catch (e, s) {
-      // Surface error but keep local state so UI stays responsive
-      state = AsyncValue.error(e, s);
-    }
+
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(seconds: 2), () async {
+      try {
+        final manager = await ref.read(notificationManagerProvider.future);
+        await manager.savePreferences(current);
+      } catch (e, s) {
+        if (_isDisposed) return;
+        // Surface error but keep local state so UI stays responsive
+        state = AsyncValue.error(e, s);
+      }
+    });
   }
 }
 

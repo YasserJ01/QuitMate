@@ -132,6 +132,12 @@ class RelapsePlan {
   // When to review the plan
   DateTime? nextReviewDate;
 
+  // User-written personal recovery guide (optional).
+  String? personalRecoveryNote;
+
+  // Timestamp of the last time the user reviewed this plan.
+  DateTime? lastReviewedAt;
+
   late DateTime createdAt;
   DateTime? updatedAt;
 

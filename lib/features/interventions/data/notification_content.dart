@@ -351,6 +351,19 @@ class NotificationContent {
     return pool[_rng.nextInt(pool.length)];
   }
 
+  /// Returns a mode-specific template for the given [type] and [mode].
+  /// Falls back to the generic pool if no mode-specific templates exist.
+  static NotificationTemplate randomTemplateForMode(
+    NotificationType type,
+    String? mode,
+  ) {
+    final modePool = _modePoolFor(type, mode);
+    if (modePool != null && modePool.isNotEmpty) {
+      return modePool[_rng.nextInt(modePool.length)];
+    }
+    return randomTemplate(type);
+  }
+
   static MicroChallenge randomMicroChallenge() =>
       microChallenges[_rng.nextInt(microChallenges.length)];
 
@@ -367,4 +380,196 @@ class NotificationContent {
       NotificationType.microChallenge => _encouragement, // fallback
     };
   }
+
+  static List<NotificationTemplate>? _modePoolFor(
+    NotificationType type,
+    String? mode,
+  ) {
+    if (mode == null) return null;
+    final isSmoking = mode.toLowerCase() == 'quitsmoking';
+    return switch (type) {
+      NotificationType.healthFact => isSmoking
+          ? _smokingHealthFacts
+          : _reductionHealthFacts,
+      NotificationType.cravingTip => isSmoking
+          ? _smokingCravingTips
+          : _reductionCravingTips,
+      NotificationType.encouragement => isSmoking
+          ? _smokingEncouragement
+          : _reductionEncouragement,
+      NotificationType.progressUpdate => isSmoking
+          ? _smokingProgressUpdates
+          : _reductionProgressUpdates,
+      _ => null,
+    };
+  }
+
+  // ─── Mode-specific template pools ───────────────────────────────────────
+
+  // ── Smoking: Health facts ───────────────────────────────────────────────
+
+  static const _smokingHealthFacts = [
+    NotificationTemplate(
+      type: NotificationType.healthFact,
+      title: 'Your lungs are healing 🫁',
+      body:
+          'Cilia in your airways are regrowing, clearing out toxins more effectively.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.healthFact,
+      title: 'Nicotine is leaving your body',
+      body:
+          'After 3 days, nicotine is completely out of your system. The physical addiction is broken.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.healthFact,
+      title: 'Your heart is thanking you ❤️',
+      body:
+          'After just 20 minutes smoke-free, your heart rate drops back to normal.',
+    ),
+  ];
+
+  // ── Smoking: Craving tips ───────────────────────────────────────────────
+
+  static const _smokingCravingTips = [
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Nicotine tip 💡',
+      body:
+          'Nicotine withdrawal peaks at 48–72 hours. The hardest part may already be behind you.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Oral substitute',
+      body:
+          'Try chewing sugar-free gum or snacking on carrot sticks when the hand-to-mouth habit kicks in.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Change your routine',
+      body:
+          'If you always smoke with coffee, switch to tea for a few days. Break the association.',
+    ),
+  ];
+
+  // ── Smoking: Encouragement ──────────────────────────────────────────────
+
+  static const _smokingEncouragement = [
+    NotificationTemplate(
+      type: NotificationType.encouragement,
+      title: 'Every cigarette not smoked counts',
+      body:
+          'Each one you skip is a win. You are reclaiming your health one decision at a time.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.encouragement,
+      title: 'Your future self thanks you',
+      body:
+          'The money you save and the health you gain compound every single day.',
+    ),
+  ];
+
+  // ── Smoking: Progress updates ───────────────────────────────────────────
+
+  static const _smokingProgressUpdates = [
+    NotificationTemplate(
+      type: NotificationType.progressUpdate,
+      title: 'Cigarettes avoided this week 🚭',
+      body:
+          'You avoided approximately {cravings} cigarettes this week. That is real progress.',
+      requiresUserData: true,
+    ),
+  ];
+
+  // ── Reduction: Health facts ─────────────────────────────────────────────
+
+  static const _reductionHealthFacts = [
+    NotificationTemplate(
+      type: NotificationType.healthFact,
+      title: 'Your brain is rewiring 🧠',
+      body:
+          'Every time you choose a different path, you strengthen new neural pathways.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.healthFact,
+      title: 'Self-control is a skill',
+      body:
+          'Like any skill, self-control grows stronger with practice. You are training your brain.',
+    ),
+  ];
+
+  // ── Reduction: Craving tips ─────────────────────────────────────────────
+
+  static const _reductionCravingTips = [
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Urge surfing reminder 🌊',
+      body:
+          'Urges peak and pass within minutes. Open the toolkit for a guided exercise.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Physical reset',
+      body:
+          'Drop and do 10 push-ups right now. Physical exertion can short-circuit an urge.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.cravingTip,
+      title: 'Environment shift',
+      body:
+          'Move to a different room or go outside. Changing your environment changes your mindset.',
+    ),
+  ];
+
+  // ── Reduction: Encouragement ────────────────────────────────────────────
+
+  static const _reductionEncouragement = [
+    NotificationTemplate(
+      type: NotificationType.encouragement,
+      title: 'You chose your values today',
+      body:
+          'Every moment of self-control is a vote for the person you want to be.',
+    ),
+    NotificationTemplate(
+      type: NotificationType.encouragement,
+      title: 'Time reclaimed ⏱️',
+      body:
+          'The time you would have spent is now yours. Use it for something that matters to you.',
+    ),
+  ];
+
+  // ── Reduction: Progress updates ─────────────────────────────────────────
+
+  static const _reductionProgressUpdates = [
+    NotificationTemplate(
+      type: NotificationType.progressUpdate,
+      title: 'Time reclaimed this week ⏱️',
+      body:
+          "You have reclaimed approximately {hours} hours this week. That time is yours.",
+      requiresUserData: true,
+    ),
+  ];
+
+  // ── All templates (for content audit) ───────────────────────────────────
+
+  /// Every template pool, exposed as a single flat list for the
+  /// ContentAuditService to scan.
+  static List<NotificationTemplate> get allTemplates => [
+        ..._dailyCheckIns,
+        ..._encouragement,
+        ..._milestones,
+        ..._cravingTips,
+        ..._healthFacts,
+        ..._motivationalQuotes,
+        ..._progressUpdates,
+        ..._streakReminders,
+        ..._smokingHealthFacts,
+        ..._smokingCravingTips,
+        ..._smokingEncouragement,
+        ..._smokingProgressUpdates,
+        ..._reductionHealthFacts,
+        ..._reductionCravingTips,
+        ..._reductionEncouragement,
+        ..._reductionProgressUpdates,
+      ];
 }

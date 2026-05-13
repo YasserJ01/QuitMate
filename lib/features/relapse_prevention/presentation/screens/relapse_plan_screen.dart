@@ -7,6 +7,7 @@ import '../../data/models/relapse_models.dart';
 import '../providers/relapse_provider.dart';
 import '../widgets/contact_card.dart';
 import 'edit_panic_steps_screen.dart';
+import 'edit_custom_steps_screen.dart';
 
 class RelapsePlanScreen extends ConsumerStatefulWidget {
   const RelapsePlanScreen({super.key});
@@ -45,13 +46,14 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
           ],
         ),
       ),
-      body: LoadingOverlay(
-        isLoading: state.isLoading,
-        child: TabBarView(
+      body: state.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
+        data: (data) => TabBarView(
           controller: _tabController,
           children: [
-            _buildPlanTab(state),
-            _buildContactsTab(state),
+            _buildPlanTab(data),
+            _buildContactsTab(data),
           ],
         ),
       ),
@@ -72,7 +74,7 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(relapseNotifierProvider.notifier).refresh();
+        ref.invalidate(relapseNotifierProvider);
       },
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -178,7 +180,16 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
                       Row(
                         children: [
                           TextButton(
-                            onPressed: () => _showEditCustomStepsDialog(state.plan!.customSteps),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditCustomStepsScreen(
+                                    initialSteps: state.plan!.customSteps,
+                                  ),
+                                ),
+                              );
+                            },
                             child: const Text('Edit'),
                           ),
                           TextButton(
@@ -258,7 +269,7 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(relapseNotifierProvider.notifier).refresh();
+        ref.invalidate(relapseNotifierProvider);
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),

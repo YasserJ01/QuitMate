@@ -1,5 +1,7 @@
 import 'package:isar/isar.dart';
+import 'package:uuid/uuid.dart';
 import '../models/relapse_models.dart';
+import '../models/lapse_recovery_session_model.dart';
 import '../../../../core/services/database/isar_service.dart';
 
 class RelapseRepository {
@@ -215,5 +217,114 @@ class RelapseRepository {
         .phoneNumberIsNotNull()
         .sortByDisplayOrder()
         .findAll();
+  }
+
+  // ============= LAPSE RECOVERY SESSIONS =============
+
+  static const _uuid = Uuid();
+
+  /// Create a new lapse recovery session and return its UUID.
+  Future<String> createRecoverySession({
+    required String userId,
+    required String mode,
+  }) async {
+    final isar = await _db;
+    final sessionId = _uuid.v4();
+
+    final model = LapseRecoverySessionModel()
+      ..sessionId = sessionId
+      ..userId = userId
+      ..startedAt = DateTime.now().toUtc()
+      ..mode = mode;
+
+    await isar.writeTxn(() => isar.lapseRecoverySessionModels.put(model));
+    return sessionId;
+  }
+
+  /// Update the triggers selected during Step 1 of the recovery flow.
+  Future<void> updateRecoverySessionTriggers({
+    required String sessionId,
+    required List<String> triggers,
+  }) async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      final model = await isar.lapseRecoverySessionModels
+          .filter()
+          .sessionIdEqualTo(sessionId)
+          .findFirst();
+      if (model != null) {
+        model.selectedTriggers = triggers;
+        await isar.lapseRecoverySessionModels.put(model);
+      }
+    });
+  }
+
+  /// Mark a recovery session as completed with the chosen action.
+  Future<void> completeRecoverySession({
+    required String sessionId,
+    required LapseRecoveryAction action,
+    bool openedToolkit = false,
+    bool readRecoveryGuide = false,
+    String? recoveryNote,
+  }) async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      final model = await isar.lapseRecoverySessionModels
+          .filter()
+          .sessionIdEqualTo(sessionId)
+          .findFirst();
+      if (model != null) {
+        model.completedAt = DateTime.now().toUtc();
+        model.chosenAction = action;
+        model.openedToolkit = openedToolkit;
+        model.readRecoveryGuide = readRecoveryGuide;
+        model.recoveryNote = recoveryNote;
+        await isar.lapseRecoverySessionModels.put(model);
+      }
+    });
+  }
+
+  /// Get all recovery sessions for a user, most recent first.
+  Future<List<LapseRecoverySessionModel>> getRecoverySessions(
+    String userId, {
+    int? limit,
+  }) async {
+    final isar = await _db;
+    // Use dynamic to bypass Isar's type-state QueryBuilder — the generic
+    // parameter changes after .sortBy*() / .limit().
+    dynamic query = isar.lapseRecoverySessionModels
+        .filter()
+        .userIdEqualTo(userId)
+        .sortByStartedAtDesc();
+
+    if (limit != null) {
+      query = query.limit(limit);
+    }
+
+    return query.findAll();
+  }
+
+  /// Count completed recovery sessions for a user.
+  Future<int> getRecoveryCount(String userId) async {
+    final isar = await _db;
+    return isar.lapseRecoverySessionModels
+        .filter()
+        .userIdEqualTo(userId)
+        .completedAtIsNotNull()
+        .count();
+  }
+
+  /// Get the most common triggers from recovery sessions.
+  Future<List<String>> getCommonTriggers(String userId) async {
+    final sessions = await getRecoverySessions(userId);
+    final counts = <String, int>{};
+    for (final s in sessions) {
+      for (final t in s.selectedTriggers) {
+        counts[t] = (counts[t] ?? 0) + 1;
+      }
+    }
+    final sorted = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.take(3).map((e) => e.key).toList();
   }
 }

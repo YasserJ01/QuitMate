@@ -2403,44 +2403,59 @@ const NotificationPreferencesSchema = CollectionSchema(
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
-    r'preferredHours': PropertySchema(
+    r'permissionDeniedAt': PropertySchema(
       id: 10,
+      name: r'permissionDeniedAt',
+      type: IsarType.dateTime,
+    ),
+    r'preferredHours': PropertySchema(
+      id: 11,
       name: r'preferredHours',
       type: IsarType.longList,
     ),
     r'progressUpdatesEnabled': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'progressUpdatesEnabled',
       type: IsarType.bool,
     ),
     r'quietHoursEnabled': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'quietHoursEnabled',
       type: IsarType.bool,
     ),
     r'quietHoursEnd': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'quietHoursEnd',
       type: IsarType.long,
     ),
     r'quietHoursStart': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'quietHoursStart',
       type: IsarType.long,
     ),
+    r'quitDatePrepEnabled': PropertySchema(
+      id: 16,
+      name: r'quitDatePrepEnabled',
+      type: IsarType.bool,
+    ),
     r'streakRemindersEnabled': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'streakRemindersEnabled',
       type: IsarType.bool,
     ),
     r'updatedAt': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'userId',
+      type: IsarType.string,
+    ),
+    r'userMode': PropertySchema(
+      id: 20,
+      name: r'userMode',
       type: IsarType.string,
     )
   },
@@ -2481,6 +2496,12 @@ int _notificationPreferencesEstimateSize(
   bytesCount += 3 + object.frequency.name.length * 3;
   bytesCount += 3 + object.preferredHours.length * 8;
   bytesCount += 3 + object.userId.length * 3;
+  {
+    final value = object.userMode;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -2500,14 +2521,17 @@ void _notificationPreferencesSerialize(
   writer.writeBool(offsets[7], object.milestoneEnabled);
   writer.writeBool(offsets[8], object.motivationalQuotesEnabled);
   writer.writeBool(offsets[9], object.notificationsEnabled);
-  writer.writeLongList(offsets[10], object.preferredHours);
-  writer.writeBool(offsets[11], object.progressUpdatesEnabled);
-  writer.writeBool(offsets[12], object.quietHoursEnabled);
-  writer.writeLong(offsets[13], object.quietHoursEnd);
-  writer.writeLong(offsets[14], object.quietHoursStart);
-  writer.writeBool(offsets[15], object.streakRemindersEnabled);
-  writer.writeDateTime(offsets[16], object.updatedAt);
-  writer.writeString(offsets[17], object.userId);
+  writer.writeDateTime(offsets[10], object.permissionDeniedAt);
+  writer.writeLongList(offsets[11], object.preferredHours);
+  writer.writeBool(offsets[12], object.progressUpdatesEnabled);
+  writer.writeBool(offsets[13], object.quietHoursEnabled);
+  writer.writeLong(offsets[14], object.quietHoursEnd);
+  writer.writeLong(offsets[15], object.quietHoursStart);
+  writer.writeBool(offsets[16], object.quitDatePrepEnabled);
+  writer.writeBool(offsets[17], object.streakRemindersEnabled);
+  writer.writeDateTime(offsets[18], object.updatedAt);
+  writer.writeString(offsets[19], object.userId);
+  writer.writeString(offsets[20], object.userMode);
 }
 
 NotificationPreferences _notificationPreferencesDeserialize(
@@ -2530,14 +2554,17 @@ NotificationPreferences _notificationPreferencesDeserialize(
   object.milestoneEnabled = reader.readBool(offsets[7]);
   object.motivationalQuotesEnabled = reader.readBool(offsets[8]);
   object.notificationsEnabled = reader.readBool(offsets[9]);
-  object.preferredHours = reader.readLongList(offsets[10]) ?? [];
-  object.progressUpdatesEnabled = reader.readBool(offsets[11]);
-  object.quietHoursEnabled = reader.readBool(offsets[12]);
-  object.quietHoursEnd = reader.readLong(offsets[13]);
-  object.quietHoursStart = reader.readLong(offsets[14]);
-  object.streakRemindersEnabled = reader.readBool(offsets[15]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[16]);
-  object.userId = reader.readString(offsets[17]);
+  object.permissionDeniedAt = reader.readDateTimeOrNull(offsets[10]);
+  object.preferredHours = reader.readLongList(offsets[11]) ?? [];
+  object.progressUpdatesEnabled = reader.readBool(offsets[12]);
+  object.quietHoursEnabled = reader.readBool(offsets[13]);
+  object.quietHoursEnd = reader.readLong(offsets[14]);
+  object.quietHoursStart = reader.readLong(offsets[15]);
+  object.quitDatePrepEnabled = reader.readBool(offsets[16]);
+  object.streakRemindersEnabled = reader.readBool(offsets[17]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[18]);
+  object.userId = reader.readString(offsets[19]);
+  object.userMode = reader.readStringOrNull(offsets[20]);
   return object;
 }
 
@@ -2571,21 +2598,27 @@ P _notificationPreferencesDeserializeProp<P>(
     case 9:
       return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 11:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 12:
       return (reader.readBool(offset)) as P;
     case 13:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 14:
       return (reader.readLong(offset)) as P;
     case 15:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 16:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 17:
+      return (reader.readBool(offset)) as P;
+    case 18:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 19:
       return (reader.readString(offset)) as P;
+    case 20:
+      return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -3132,6 +3165,80 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'permissionDeniedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'permissionDeniedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'permissionDeniedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'permissionDeniedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'permissionDeniedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> permissionDeniedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'permissionDeniedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
       QAfterFilterCondition> preferredHoursElementEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -3409,6 +3516,16 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> quitDatePrepEnabledEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'quitDatePrepEnabled',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
       QAfterFilterCondition> streakRemindersEnabledEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -3629,6 +3746,162 @@ extension NotificationPreferencesQueryFilter on QueryBuilder<
       ));
     });
   }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'userMode',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'userMode',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'userMode',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+          QAfterFilterCondition>
+      userModeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'userMode',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+          QAfterFilterCondition>
+      userModeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'userMode',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userMode',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences,
+      QAfterFilterCondition> userModeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'userMode',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension NotificationPreferencesQueryObject on QueryBuilder<
@@ -3780,6 +4053,20 @@ extension NotificationPreferencesQuerySortBy
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByPermissionDeniedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permissionDeniedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByPermissionDeniedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permissionDeniedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       sortByProgressUpdatesEnabled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'progressUpdatesEnabled', Sort.asc);
@@ -3836,6 +4123,20 @@ extension NotificationPreferencesQuerySortBy
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByQuitDatePrepEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'quitDatePrepEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByQuitDatePrepEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'quitDatePrepEnabled', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       sortByStreakRemindersEnabled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'streakRemindersEnabled', Sort.asc);
@@ -3874,6 +4175,20 @@ extension NotificationPreferencesQuerySortBy
       sortByUserIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByUserMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userMode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      sortByUserModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userMode', Sort.desc);
     });
   }
 }
@@ -4035,6 +4350,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByPermissionDeniedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permissionDeniedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByPermissionDeniedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'permissionDeniedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       thenByProgressUpdatesEnabled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'progressUpdatesEnabled', Sort.asc);
@@ -4091,6 +4420,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByQuitDatePrepEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'quitDatePrepEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByQuitDatePrepEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'quitDatePrepEnabled', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
       thenByStreakRemindersEnabled() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'streakRemindersEnabled', Sort.asc);
@@ -4129,6 +4472,20 @@ extension NotificationPreferencesQuerySortThenBy on QueryBuilder<
       thenByUserIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByUserMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userMode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QAfterSortBy>
+      thenByUserModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userMode', Sort.desc);
     });
   }
 }
@@ -4206,6 +4563,13 @@ extension NotificationPreferencesQueryWhereDistinct on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByPermissionDeniedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'permissionDeniedAt');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
       distinctByPreferredHours() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'preferredHours');
@@ -4241,6 +4605,13 @@ extension NotificationPreferencesQueryWhereDistinct on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByQuitDatePrepEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'quitDatePrepEnabled');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
       distinctByStreakRemindersEnabled() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'streakRemindersEnabled');
@@ -4258,6 +4629,13 @@ extension NotificationPreferencesQueryWhereDistinct on QueryBuilder<
       distinctByUserId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'userId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, NotificationPreferences, QDistinct>
+      distinctByUserMode({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'userMode', caseSensitive: caseSensitive);
     });
   }
 }
@@ -4340,6 +4718,13 @@ extension NotificationPreferencesQueryProperty on QueryBuilder<
     });
   }
 
+  QueryBuilder<NotificationPreferences, DateTime?, QQueryOperations>
+      permissionDeniedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'permissionDeniedAt');
+    });
+  }
+
   QueryBuilder<NotificationPreferences, List<int>, QQueryOperations>
       preferredHoursProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -4376,6 +4761,13 @@ extension NotificationPreferencesQueryProperty on QueryBuilder<
   }
 
   QueryBuilder<NotificationPreferences, bool, QQueryOperations>
+      quitDatePrepEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'quitDatePrepEnabled');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, bool, QQueryOperations>
       streakRemindersEnabledProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'streakRemindersEnabled');
@@ -4393,6 +4785,13 @@ extension NotificationPreferencesQueryProperty on QueryBuilder<
       userIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'userId');
+    });
+  }
+
+  QueryBuilder<NotificationPreferences, String?, QQueryOperations>
+      userModeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'userMode');
     });
   }
 }

@@ -101,9 +101,25 @@ class PushNotificationService {
     final android = _plugin
         .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    final granted =
-    await android?.areNotificationsEnabled();
-    return granted ?? true; // iOS assumed true if initialized
+    final granted = await android?.areNotificationsEnabled();
+    if (granted != null) return granted;
+
+    // iOS: flutter_local_notifications does not expose a permission-status
+    // check API.  We fall back to a best-effort heuristic: if the plugin
+    // resolved an iOS implementation we assume the user was prompted at
+    // least once.  A definitive answer requires the permission_handler
+    // package (Permission.notification.status).
+    // TODO: Integrate permission_handler ^11.x for accurate iOS check.
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    if (ios != null) {
+      // Cannot determine — return false to trigger the permission banner
+      // rather than silently assuming granted.
+      return false;
+    }
+
+    return false;
   }
 
   // ─── Schedule / Show ───────────────────────────────────────────────────────

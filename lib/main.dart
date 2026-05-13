@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'app.dart';
 import 'core/services/database/isar_service.dart';
 import 'features/interventions/services/push_notification_service.dart';
+import 'features/craving_toolkit/data/datasources/toolkit_seed_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,9 @@ Future<void> main() async {
 
   // ── 3. Isar database ───────────────────────────────────────────────────────
   await IsarService.instance;
+
+  // ── 3b. Seed toolkit exercise catalogue (idempotent — safe every launch) ──
+  await ToolkitSeedService().seedIfNeeded();
 
   // ── 4. Local notification plugin (channel creation + listener wiring) ─────
   await PushNotificationService().initialize();

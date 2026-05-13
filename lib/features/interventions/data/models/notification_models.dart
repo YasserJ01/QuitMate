@@ -125,6 +125,21 @@ class NotificationPreferences {
   /// Hours-of-day the user prefers to receive messages (0–23).
   List<int> preferredHours = const [9, 12, 15, 18, 20];
 
+  // ── Permission tracking ─────────────────────────────────────────────────
+
+  /// When the user last explicitly denied notification permission.
+  /// Used to avoid re-prompting too soon (7-day cooldown).
+  DateTime? permissionDeniedAt;
+
+  // ── Mode-specific scheduling ────────────────────────────────────────────
+
+  /// The user's current goal mode, set during onboarding completion.
+  /// Used by the adaptive engine to select mode-specific templates.
+  String? userMode; // GoalType.name
+
+  /// Whether to schedule quit-date preparation notifications (smoking mode).
+  bool quitDatePrepEnabled = true;
+
   late DateTime createdAt;
   DateTime? updatedAt;
 
@@ -148,6 +163,7 @@ class NotificationPreferences {
   bool isInQuietHours(DateTime time) {
     if (!quietHoursEnabled) return false;
     final h = time.hour;
+    if (quietHoursStart == quietHoursEnd) return false;
     return quietHoursStart < quietHoursEnd
     // same-day range e.g. 09:00–17:00
         ? h >= quietHoursStart && h < quietHoursEnd

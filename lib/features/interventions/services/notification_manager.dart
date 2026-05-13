@@ -50,6 +50,35 @@ class NotificationManager {
   Future<bool> requestPermissions() => _push.requestPermissions();
   Future<bool> hasPermissions() => _push.hasPermission();
 
+  /// Requests notification permission only if appropriate:
+  /// - Not already granted
+  /// - Not recently denied (within 7 days)
+  ///
+  /// Call this after the first log event or at day 2 opener — NOT on cold start.
+  Future<bool> requestPermissionsIfAppropriate(String userId) async {
+    // Do not request if already granted
+    if (await _push.hasPermission()) return true;
+
+    // Do not request if recently denied
+    final prefs = await _repo.getPreferences(userId);
+    if (prefs.permissionDeniedAt != null) {
+      final daysSinceDenial =
+          DateTime.now().difference(prefs.permissionDeniedAt!).inDays;
+      if (daysSinceDenial < 7) return false;
+    }
+
+    // Request
+    final granted = await _push.requestPermissions();
+    if (!granted) {
+      prefs.permissionDeniedAt = DateTime.now().toUtc();
+      await _repo.savePreferences(prefs);
+    } else {
+      await scheduleAll(userId);
+    }
+
+    return granted;
+  }
+
   /// Stream of notification taps — subscribe to handle deep-links.
   Stream<NotificationTapPayload> get onTap => _push.onNotificationTap;
 
@@ -75,6 +104,12 @@ class NotificationManager {
 
   Future<void> onInactivityDetected(String userId, DateTime lastOpened) =>
       _scheduler.onInactivityDetected(userId, lastOpened);
+
+  Future<void> scheduleQuitDatePrep(String userId, DateTime quitDate) =>
+      _scheduler.scheduleQuitDatePrep(userId, quitDate);
+
+  Future<void> scheduleBedtimeReminder(String userId, int bedtimeHour) =>
+      _scheduler.scheduleBedtimeReminder(userId, bedtimeHour);
 
   // ─── Preferences ─────────────────────────────────────────────────────────
 
