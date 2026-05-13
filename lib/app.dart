@@ -50,9 +50,9 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
     try {
       final manager = await ref.read(notificationManagerProvider.future);
 
-      // Request permission on first run; subsequent calls are no-ops.
-      final granted = await manager.requestPermissions();
-      if (!granted) return;
+      // Do NOT request permission on cold start (SRS FR-N07).
+      // Permission is requested after the first log event via
+      // manager.requestPermissionsIfAppropriate().
 
       final userId = await _secureStorage.getUserId();
       if (userId == null) return;

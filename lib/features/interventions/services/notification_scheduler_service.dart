@@ -6,6 +6,7 @@ import '../data/repositories/notification_repository.dart';
 import '../../tracking/data/repositories/tracking_repository.dart';
 import '../../onboarding/data/repositories/profile_repository.dart';
 import '../../tracking/services/statistics_calculator.dart';
+import '../../tracking/data/models/statistics.dart';
 import 'push_notification_service.dart';
 
 /// Business-logic layer that decides *what* to send and *when*.
@@ -53,7 +54,7 @@ class NotificationSchedulerService {
 
     // Housekeeping
     await _repo.pruneOld(userId);
-    await _push.cancelAll();
+    await _cancelFutureNotifications(userId);
 
     // Gather adaptive context
     final profile = await _profileRepo.getProfile(userId);
@@ -73,16 +74,30 @@ class NotificationSchedulerService {
     }
   }
 
+  Future<void> _cancelFutureNotifications(String userId) async {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day)
+        .add(const Duration(days: 1));
+    final pending = await _repo.getPending(userId);
+
+    for (final n in pending) {
+      if (n.scheduledTime.isAfter(tomorrow)) {
+        await _push.cancel(n.id);
+        await _repo.delete(n.id);
+      }
+    }
+  }
+
   // ─── Per-day batch ───────────────────────────────────────────────────────
 
   Future<void> _scheduleDayBatch(
       String userId,
       DateTime date,
       NotificationPreferences prefs,
-      dynamic stats,
+      Statistics stats,
       ) async {
     final types =
-    _selectTypes(prefs, stats, prefs.frequency.maxPerDay);
+    _selectTypes(prefs, stats, prefs.frequency.maxPerDay, prefs.userMode);
     final times = _generateTimes(date, prefs, types.length);
 
     for (var i = 0; i < times.length && i < types.length; i++) {
@@ -111,8 +126,9 @@ class NotificationSchedulerService {
 
   List<NotificationType> _selectTypes(
       NotificationPreferences prefs,
-      dynamic stats,
+      Statistics stats,
       int count,
+      String? mode,
       ) {
     final selected = <NotificationType>[];
 
@@ -133,7 +149,7 @@ class NotificationSchedulerService {
     }
 
     // Struggling with cravings? Prioritise tips + encouragement
-    final resistanceRate = (stats.cravingResistanceRate as num?)?.toDouble() ?? 50.0;
+    final resistanceRate = stats.cravingResistanceRate.toDouble();
     final cravingWeight = resistanceRate < 50 ? 3 : 1;
 
     addIf(prefs.cravingTipsEnabled, NotificationType.cravingTip, cravingWeight);
@@ -142,6 +158,17 @@ class NotificationSchedulerService {
     addIf(prefs.microChallengesEnabled, NotificationType.microChallenge);
     addIf(prefs.healthFactsEnabled, NotificationType.healthFact);
     addIf(prefs.motivationalQuotesEnabled, NotificationType.motivationalQuote);
+
+    // Mode-specific weighting
+    final isSmoking = mode != null && mode.toLowerCase() == 'quitsmoking';
+    if (isSmoking && prefs.healthFactsEnabled) {
+      pool.add(NotificationType.healthFact);
+      pool.add(NotificationType.healthFact); // higher weight for smoking
+    }
+    if (!isSmoking && mode != null && prefs.encouragementEnabled) {
+      pool.add(NotificationType.encouragement);
+      pool.add(NotificationType.encouragement); // higher weight for reduction
+    }
 
     // Milestone (only if today is a milestone day)
     if (prefs.milestoneEnabled && _isMilestoneDay(stats)) {
@@ -155,7 +182,7 @@ class NotificationSchedulerService {
     }
 
     // Streak reminder (last slot of the day, if streaking)
-    final streak = (stats.currentStreak as num?)?.toInt() ?? 0;
+    final streak = stats.currentStreak;
     if (prefs.streakRemindersEnabled && streak > 0) {
       selected.add(NotificationType.streakReminder);
     }
@@ -225,7 +252,7 @@ class NotificationSchedulerService {
     required String userId,
     required NotificationType type,
     required DateTime scheduledTime,
-    required dynamic stats,
+    required Statistics stats,
   }) async {
     final n = ScheduledNotification()
       ..userId = userId
@@ -242,7 +269,12 @@ class NotificationSchedulerService {
           'action': challenge.actionType,
         });
     } else {
-      final template = NotificationContent.randomTemplate(type);
+      // Use mode-specific templates when available
+      final prefs = await _repo.getPreferences(userId);
+      final template = NotificationContent.randomTemplateForMode(
+        type,
+        prefs.userMode,
+      );
       final data = _userData(stats);
       n
         ..title = template.formatTitle(data)
@@ -255,11 +287,11 @@ class NotificationSchedulerService {
     return n;
   }
 
-  Map<String, dynamic> _userData(dynamic stats) => {
-    'days': (stats.currentStreak as num?)?.toInt() ?? 0,
-    'money': (stats.moneySaved as num?)?.round() ?? 0,
-    'cravings': (stats.cravingsResisted as num?)?.toInt() ?? 0,
-    'rate': (stats.cravingResistanceRate as num?)?.round() ?? 0,
+  Map<String, dynamic> _userData(Statistics stats) => {
+    'days': stats.currentStreak,
+    'money': stats.moneySaved.round(),
+    'cravings': stats.cravingsResisted,
+    'rate': stats.cravingResistanceRate.round(),
   };
 
   String _payload(Map<String, dynamic> data) =>
@@ -368,6 +400,93 @@ class NotificationSchedulerService {
     await _repo.markSent(saved.id);
   }
 
+  // ── Quit-date preparation (smoking mode) ───────────────────────────────
+
+  /// Schedule T-3 and T-1 day preparation notifications before the quit date.
+  /// Called from onboarding when the user sets their quit date.
+  Future<void> scheduleQuitDatePrep(String userId, DateTime quitDate) async {
+    final prefs = await _repo.getPreferences(userId);
+    if (!prefs.notificationsEnabled || !prefs.milestoneEnabled) return;
+    if (!prefs.quitDatePrepEnabled) return;
+
+    final threeDaysBefore = quitDate.subtract(const Duration(days: 3));
+    final oneDayBefore = quitDate.subtract(const Duration(days: 1));
+
+    if (threeDaysBefore.isAfter(DateTime.now())) {
+      final n = ScheduledNotification()
+        ..userId = userId
+        ..type = NotificationType.milestone
+        ..scheduledTime = threeDaysBefore
+        ..title = '3 days until your quit date 🗓️'
+        ..body =
+            'Getting ready? Remove cigarettes, tell a friend, prep your toolkit.'
+        ..payload = _payload({'type': 'quit_prep', 'days': '3'});
+
+      final saved = await _repo.save(n);
+      await _push.scheduleNotification(
+        id: saved.id,
+        title: saved.title,
+        body: saved.body,
+        scheduledTime: threeDaysBefore,
+        payload: saved.payload,
+      );
+    }
+
+    if (oneDayBefore.isAfter(DateTime.now())) {
+      final n = ScheduledNotification()
+        ..userId = userId
+        ..type = NotificationType.milestone
+        ..scheduledTime = oneDayBefore
+        ..title = 'Tomorrow is your quit day 🌟'
+        ..body =
+            "You have got everything you need. We will be here with you."
+        ..payload = _payload({'type': 'quit_prep', 'days': '1'});
+
+      final saved = await _repo.save(n);
+      await _push.scheduleNotification(
+        id: saved.id,
+        title: saved.title,
+        body: saved.body,
+        scheduledTime: oneDayBefore,
+        payload: saved.payload,
+      );
+    }
+  }
+
+  // ── Bedtime reminder (reduction mode) ──────────────────────────────────
+
+  /// Schedule a daily notification 30 minutes before the user's bedtime.
+  /// Called from onboarding when the user reports bedtime as a high-risk window.
+  Future<void> scheduleBedtimeReminder(String userId, int bedtimeHour) async {
+    final prefs = await _repo.getPreferences(userId);
+    if (!prefs.notificationsEnabled || !prefs.cravingTipsEnabled) return;
+
+    final reminderHour = (bedtimeHour - 1).clamp(0, 23);
+    final now = DateTime.now();
+    var scheduledTime = DateTime(now.year, now.month, now.day, reminderHour, 30);
+    if (scheduledTime.isBefore(now)) {
+      scheduledTime = scheduledTime.add(const Duration(days: 1));
+    }
+
+    final n = ScheduledNotification()
+      ..userId = userId
+      ..type = NotificationType.cravingTip
+      ..scheduledTime = scheduledTime
+      ..title = 'Wind-down time 🌙'
+      ..body =
+          'Consider a device-free wind-down routine. Your environment shapes your habits.'
+      ..payload = _payload({'type': 'bedtime_reminder'});
+
+    final saved = await _repo.save(n);
+    await _push.scheduleNotification(
+      id: saved.id,
+      title: saved.title,
+      body: saved.body,
+      scheduledTime: scheduledTime,
+      payload: saved.payload,
+    );
+  }
+
   /// Schedule preventive notifications 15 minutes before historically risky hours.
   Future<void> schedulePreventive(String userId) async {
     final prefs = await _repo.getPreferences(userId);
@@ -406,8 +525,8 @@ class NotificationSchedulerService {
 
   static const _milestones = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-  bool _isMilestoneDay(dynamic stats) =>
-      _milestones.contains((stats.currentStreak as num?)?.toInt() ?? 0);
+  bool _isMilestoneDay(Statistics stats) =>
+      _milestones.contains(stats.currentStreak);
 
   String _milestoneMessage(int days) => switch (days) {
     1 => "You made it through the first day! That's huge!",

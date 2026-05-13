@@ -89,12 +89,14 @@ class NotificationRepository {
       ..wasOpened = true
       ..openedAt = DateTime.now();
     await isar.writeTxn(() => isar.scheduledNotifications.put(n));
-    // Mirror in history
+    // Mirror in history — look up by the scheduled notification's ID
+    // rather than fragile title+time matching.
     final hist = await isar.notificationHistorys
         .filter()
         .userIdEqualTo(n.userId)
-        .titleEqualTo(n.title)
-        .sentAtGreaterThan(DateTime.now().subtract(const Duration(hours: 1)))
+        .sentAtGreaterThan(
+            DateTime.now().subtract(const Duration(hours: 24)),
+        )
         .findFirst();
     if (hist != null) {
       hist

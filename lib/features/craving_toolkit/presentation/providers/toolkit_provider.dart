@@ -1,12 +1,124 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/toolkit_models.dart';
 import '../../data/repositories/toolkit_repository.dart';
+import '../../data/repositories/toolkit_repository_impl.dart';
+import '../../domain/entities/toolkit_exercise.dart';
+import '../../domain/entities/toolkit_session.dart';
+import '../../domain/repositories/i_toolkit_repository.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
 
-// Repository provider
+// ─── Repository providers ──────────────────────────────────────────────────
+
 final toolkitRepositoryProvider = Provider<ToolkitRepository>((ref) {
   return ToolkitRepository();
 });
+
+final toolkitExerciseRepoProvider = Provider<IToolkitRepository>((ref) {
+  return ToolkitRepositoryImpl();
+});
+
+// ─── Exercise catalogue (mode-filtered) ────────────────────────────────────
+
+final toolkitExercisesProvider = FutureProvider.autoDispose
+    .family<List<ToolkitExercise>, String>((ref, mode) async {
+  final repo = ref.watch(toolkitExerciseRepoProvider);
+  return repo.getExercisesForMode(mode);
+});
+
+// ─── Favorites (stream — live updates on toggle) ───────────────────────────
+
+final favoriteExercisesProvider = StreamProvider.autoDispose
+    .family<List<ToolkitExercise>, String>((ref, mode) {
+  final repo = ref.watch(toolkitExerciseRepoProvider);
+  return repo.watchFavorites(mode);
+});
+
+// ─── Recents (last 3, any mode) ────────────────────────────────────────────
+
+final recentExercisesProvider =
+    FutureProvider.autoDispose<List<ToolkitExercise>>((ref) async {
+  final repo = ref.watch(toolkitExerciseRepoProvider);
+  return repo.getRecentExercises(limit: 3);
+});
+
+// ─── Active session notifier ───────────────────────────────────────────────
+
+class ToolkitSessionState {
+  final ToolkitSession? activeSession;
+  final ToolkitSession? lastCompletedSession;
+
+  const ToolkitSessionState({this.activeSession, this.lastCompletedSession});
+
+  ToolkitSessionState copyWith({
+    ToolkitSession? activeSession,
+    ToolkitSession? lastCompletedSession,
+  }) =>
+      ToolkitSessionState(
+        activeSession: activeSession ?? this.activeSession,
+        lastCompletedSession:
+            lastCompletedSession ?? this.lastCompletedSession,
+      );
+}
+
+class ToolkitSessionNotifier extends AutoDisposeNotifier<ToolkitSessionState> {
+  @override
+  ToolkitSessionState build() => const ToolkitSessionState();
+
+  Future<void> startSession(
+    ToolkitExercise exercise,
+    String userId,
+    String mode,
+  ) async {
+    final repo = ref.read(toolkitExerciseRepoProvider);
+    final sessionId = await repo.startSession(
+      exerciseId: exercise.id,
+      userId: userId,
+      mode: mode,
+    );
+    await repo.markExerciseUsed(exercise.id);
+    ref.invalidate(recentExercisesProvider);
+
+    state = state.copyWith(
+      activeSession: ToolkitSession(
+        id: sessionId,
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        exerciseCategory: exercise.category.name,
+        startedAt: DateTime.now().toUtc(),
+        mode: mode,
+      ),
+    );
+  }
+
+  Future<void> endSession({required bool completed}) async {
+    final session = state.activeSession;
+    if (session == null) return;
+    final repo = ref.read(toolkitExerciseRepoProvider);
+    await repo.endSession(sessionId: session.id, completed: completed);
+    state = state.copyWith(
+      activeSession: null,
+      lastCompletedSession: session,
+    );
+  }
+
+  Future<void> recordFeedback(int rating) async {
+    final session = state.lastCompletedSession;
+    if (session == null) return;
+    await ref.read(toolkitExerciseRepoProvider).recordFeedback(
+          sessionId: session.id,
+          rating: rating,
+        );
+  }
+
+  Future<void> toggleFavorite(String exerciseId) async {
+    await ref.read(toolkitExerciseRepoProvider).toggleFavorite(exerciseId);
+  }
+}
+
+final toolkitSessionProvider =
+    NotifierProvider.autoDispose<ToolkitSessionNotifier, ToolkitSessionState>(
+  ToolkitSessionNotifier.new,
+);
 
 // Statistics provider
 final toolkitStatisticsProvider = FutureProvider.autoDispose<ToolkitStatistics>(

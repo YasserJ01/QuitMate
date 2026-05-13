@@ -1913,29 +1913,39 @@ const RelapsePlanSchema = CollectionSchema(
       name: r'customSteps',
       type: IsarType.stringList,
     ),
-    r'nextReviewDate': PropertySchema(
+    r'lastReviewedAt': PropertySchema(
       id: 2,
+      name: r'lastReviewedAt',
+      type: IsarType.dateTime,
+    ),
+    r'nextReviewDate': PropertySchema(
+      id: 3,
       name: r'nextReviewDate',
       type: IsarType.dateTime,
     ),
     r'notes': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'notes',
       type: IsarType.string,
     ),
     r'panicSteps': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'panicSteps',
       type: IsarType.objectList,
       target: r'PanicStep',
     ),
+    r'personalRecoveryNote': PropertySchema(
+      id: 6,
+      name: r'personalRecoveryNote',
+      type: IsarType.string,
+    ),
     r'updatedAt': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'userId',
       type: IsarType.string,
     )
@@ -1995,6 +2005,12 @@ int _relapsePlanEstimateSize(
       bytesCount += PanicStepSchema.estimateSize(value, offsets, allOffsets);
     }
   }
+  {
+    final value = object.personalRecoveryNote;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.userId.length * 3;
   return bytesCount;
 }
@@ -2007,16 +2023,18 @@ void _relapsePlanSerialize(
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
   writer.writeStringList(offsets[1], object.customSteps);
-  writer.writeDateTime(offsets[2], object.nextReviewDate);
-  writer.writeString(offsets[3], object.notes);
+  writer.writeDateTime(offsets[2], object.lastReviewedAt);
+  writer.writeDateTime(offsets[3], object.nextReviewDate);
+  writer.writeString(offsets[4], object.notes);
   writer.writeObjectList<PanicStep>(
-    offsets[4],
+    offsets[5],
     allOffsets,
     PanicStepSchema.serialize,
     object.panicSteps,
   );
-  writer.writeDateTime(offsets[5], object.updatedAt);
-  writer.writeString(offsets[6], object.userId);
+  writer.writeString(offsets[6], object.personalRecoveryNote);
+  writer.writeDateTime(offsets[7], object.updatedAt);
+  writer.writeString(offsets[8], object.userId);
 }
 
 RelapsePlan _relapsePlanDeserialize(
@@ -2029,17 +2047,19 @@ RelapsePlan _relapsePlanDeserialize(
   object.createdAt = reader.readDateTime(offsets[0]);
   object.customSteps = reader.readStringList(offsets[1]) ?? [];
   object.id = id;
-  object.nextReviewDate = reader.readDateTimeOrNull(offsets[2]);
-  object.notes = reader.readStringOrNull(offsets[3]);
+  object.lastReviewedAt = reader.readDateTimeOrNull(offsets[2]);
+  object.nextReviewDate = reader.readDateTimeOrNull(offsets[3]);
+  object.notes = reader.readStringOrNull(offsets[4]);
   object.panicSteps = reader.readObjectList<PanicStep>(
-        offsets[4],
+        offsets[5],
         PanicStepSchema.deserialize,
         allOffsets,
         PanicStep(),
       ) ??
       [];
-  object.updatedAt = reader.readDateTimeOrNull(offsets[5]);
-  object.userId = reader.readString(offsets[6]);
+  object.personalRecoveryNote = reader.readStringOrNull(offsets[6]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[7]);
+  object.userId = reader.readString(offsets[8]);
   return object;
 }
 
@@ -2057,8 +2077,10 @@ P _relapsePlanDeserializeProp<P>(
     case 2:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
       return (reader.readObjectList<PanicStep>(
             offset,
             PanicStepSchema.deserialize,
@@ -2066,9 +2088,11 @@ P _relapsePlanDeserializeProp<P>(
             PanicStep(),
           ) ??
           []) as P;
-    case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2603,6 +2627,80 @@ extension RelapsePlanQueryFilter
   }
 
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'lastReviewedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'lastReviewedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      lastReviewedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastReviewedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
       nextReviewDateIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2915,6 +3013,160 @@ extension RelapsePlanQueryFilter
   }
 
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'personalRecoveryNote',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'personalRecoveryNote',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'personalRecoveryNote',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'personalRecoveryNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'personalRecoveryNote',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'personalRecoveryNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
+      personalRecoveryNoteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'personalRecoveryNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterFilterCondition>
       updatedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -3150,6 +3402,19 @@ extension RelapsePlanQuerySortBy
     });
   }
 
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> sortByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      sortByLastReviewedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> sortByNextReviewDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'nextReviewDate', Sort.asc);
@@ -3172,6 +3437,20 @@ extension RelapsePlanQuerySortBy
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> sortByNotesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      sortByPersonalRecoveryNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'personalRecoveryNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      sortByPersonalRecoveryNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'personalRecoveryNote', Sort.desc);
     });
   }
 
@@ -3226,6 +3505,19 @@ extension RelapsePlanQuerySortThenBy
     });
   }
 
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> thenByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      thenByLastReviewedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> thenByNextReviewDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'nextReviewDate', Sort.asc);
@@ -3248,6 +3540,20 @@ extension RelapsePlanQuerySortThenBy
   QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy> thenByNotesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      thenByPersonalRecoveryNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'personalRecoveryNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QAfterSortBy>
+      thenByPersonalRecoveryNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'personalRecoveryNote', Sort.desc);
     });
   }
 
@@ -3290,6 +3596,12 @@ extension RelapsePlanQueryWhereDistinct
     });
   }
 
+  QueryBuilder<RelapsePlan, RelapsePlan, QDistinct> distinctByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastReviewedAt');
+    });
+  }
+
   QueryBuilder<RelapsePlan, RelapsePlan, QDistinct> distinctByNextReviewDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'nextReviewDate');
@@ -3300,6 +3612,14 @@ extension RelapsePlanQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'notes', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<RelapsePlan, RelapsePlan, QDistinct>
+      distinctByPersonalRecoveryNote({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'personalRecoveryNote',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -3339,6 +3659,13 @@ extension RelapsePlanQueryProperty
   }
 
   QueryBuilder<RelapsePlan, DateTime?, QQueryOperations>
+      lastReviewedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastReviewedAt');
+    });
+  }
+
+  QueryBuilder<RelapsePlan, DateTime?, QQueryOperations>
       nextReviewDateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'nextReviewDate');
@@ -3355,6 +3682,13 @@ extension RelapsePlanQueryProperty
       panicStepsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'panicSteps');
+    });
+  }
+
+  QueryBuilder<RelapsePlan, String?, QQueryOperations>
+      personalRecoveryNoteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'personalRecoveryNote');
     });
   }
 

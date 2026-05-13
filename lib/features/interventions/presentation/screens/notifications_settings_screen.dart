@@ -298,29 +298,28 @@ class _HourPickerTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
-      trailing: _HourDropdown(hour: hour, onChanged: onChanged),
-    );
-  }
-}
-
-class _HourDropdown extends StatelessWidget {
-  final int hour;
-  final ValueChanged<int> onChanged;
-  const _HourDropdown({required this.hour, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButton<int>(
-      value: hour,
-      underline: const SizedBox.shrink(),
-      items: List.generate(
-        24,
-            (h) => DropdownMenuItem(
-          value: h,
-          child: Text(_label(h)),
+      trailing: Text(
+        _label(hour),
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      onChanged: (v) => v != null ? onChanged(v) : null,
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay(hour: hour, minute: 0),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              alwaysUse24HourFormat: false,
+            ),
+            child: child!,
+          ),
+        );
+        if (picked != null) {
+          onChanged(picked.hour);
+        }
+      },
     );
   }
 
@@ -329,8 +328,8 @@ class _HourDropdown extends StatelessWidget {
     final display = h == 0
         ? '12'
         : h <= 12
-        ? '$h'
-        : '${h - 12}';
+            ? '$h'
+            : '${h - 12}';
     return '$display:00 $period';
   }
 }

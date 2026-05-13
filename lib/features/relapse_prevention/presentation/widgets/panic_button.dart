@@ -10,13 +10,15 @@ class PanicButton extends StatefulWidget {
   State<PanicButton> createState() => _PanicButtonState();
 }
 
-class _PanicButtonState extends State<PanicButton> with SingleTickerProviderStateMixin {
+class _PanicButtonState extends State<PanicButton>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -28,7 +30,17 @@ class _PanicButtonState extends State<PanicButton> with SingleTickerProviderStat
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _controller.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }

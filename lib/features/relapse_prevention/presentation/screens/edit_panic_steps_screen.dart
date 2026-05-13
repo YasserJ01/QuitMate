@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quitmate/features/onboarding/presentation/providers/onboarding_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/models/relapse_models.dart';
@@ -26,10 +27,11 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
   }
 
   Future<void> _loadSteps() async {
-    // Invalidate the provider to force a fresh read from database
-    ref.invalidate(relapsePlanProvider);
-    
-    final plan = await ref.read(relapsePlanProvider.future);
+    final repository = ref.read(relapseRepositoryProvider);
+    final userId = await ref.read(secureStorageProvider).getUserId();
+    if (userId == null) return;
+    final plan = await repository.getPlanFresh(userId);
+    if (plan == null) return;
     
     setState(() {
       // Create deep copies of steps to avoid reference issues
