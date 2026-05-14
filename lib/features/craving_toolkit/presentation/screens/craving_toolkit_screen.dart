@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../data/models/toolkit_models.dart';
+import '../../domain/entities/toolkit_exercise.dart';
 import '../providers/toolkit_provider.dart';
-import 'breathing_exercise_screen.dart';
-import 'cbt_technique_screen.dart';
-import 'grounding_exercise_screen.dart';
-import 'distraction_chooser_screen.dart';
+import '../widgets/exercise_card.dart';
+import '../widgets/exercise_chip.dart';
+import 'exercise_detail_screen.dart';
 import 'toolkit_history_screen.dart';
 
+/// Main hub for the craving toolkit — domain-layer-driven catalogue with
+/// favorites, recents, and mode-filtered exercise sections.
 class CravingToolkitScreen extends ConsumerWidget {
   final int? cravingId;
 
@@ -19,7 +20,7 @@ class CravingToolkitScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(toolkitStatisticsProvider);
+    final modeAsync = ref.watch(currentModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -39,87 +40,49 @@ class CravingToolkitScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Header
-          _buildHeader(context),
-          const SizedBox(height: 24),
-
-          // Emergency tip
-          _buildEmergencyTip(context),
-          const SizedBox(height: 24),
-
-          // Main categories
-          Text(
-            'Choose a Technique',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-
-          _buildCategoryCard(
-            context,
-            title: 'Breathing Exercises',
-            subtitle: '30-120 seconds • Calm your nervous system',
-            icon: Icons.air,
-            emoji: '🫁',
-            color: AppTheme.primaryColor,
-            onTap: () => _showBreathingOptions(context),
-          ),
-          const SizedBox(height: 12),
-
-          _buildCategoryCard(
-            context,
-            title: 'CBT Techniques',
-            subtitle: '2-5 minutes • Challenge your thoughts',
-            icon: Icons.psychology,
-            emoji: '🧠',
-            color: AppTheme.successColor,
-            onTap: () => _showCbtOptions(context),
-          ),
-          const SizedBox(height: 12),
-
-          _buildCategoryCard(
-            context,
-            title: 'Grounding Exercises',
-            subtitle: '1-3 minutes • Stay present',
-            icon: Icons.self_improvement,
-            emoji: '👁️',
-            color: AppTheme.warningColor,
-            onTap: () => _showGroundingOptions(context),
-          ),
-          const SizedBox(height: 12),
-
-          _buildCategoryCard(
-            context,
-            title: 'Distraction Activities',
-            subtitle: '3-10 minutes • Redirect your focus',
-            icon: Icons.games,
-            emoji: '🎮',
-            color: Colors.purple,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DistractionChooserScreen(
-                    cravingId: cravingId,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-
-          // Statistics
-          statsAsync.when(
-            data: (stats) => _buildStatistics(context, stats),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => const SizedBox(),
-          ),
-        ],
+      body: modeAsync.when(
+        loading: () =>
+            const Center(child: CircularProgressIndicator()),
+        error: (e, _) =>
+            const Center(child: Text('Unable to load toolkit')),
+        data: (mode) {
+          final effectiveMode = mode ?? 'quitSmoking';
+          return _ToolkitContent(mode: effectiveMode);
+        },
       ),
     );
   }
+}
+
+class _ToolkitContent extends ConsumerWidget {
+  final String mode;
+  const _ToolkitContent({required this.mode});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildHeader(context),
+        const SizedBox(height: 24),
+        _buildEmergencyTip(context),
+        const SizedBox(height: 24),
+        // Favorites section
+        _buildFavoritesSection(context, mode, ref),
+        // Recents section
+        _buildRecentsSection(context, mode, ref),
+        // All exercises
+        Text(
+          'All Exercises',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        _buildAllExercisesSection(context, mode, ref),
+      ],
+    );
+  }
+
+  // ── Header ──────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -136,7 +99,7 @@ class CravingToolkitScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha:0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -175,14 +138,16 @@ class CravingToolkitScreen extends ConsumerWidget {
     );
   }
 
+  // ── Emergency tip ───────────────────────────────────────────────────────
+
   Widget _buildEmergencyTip(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withValues(alpha:0.1),
+        color: AppTheme.warningColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.warningColor.withValues(alpha:0.3),
+          color: AppTheme.warningColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -211,368 +176,167 @@ class CravingToolkitScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCategoryCard(
-      BuildContext context, {
-        required String title,
-        required String subtitle,
-        required IconData icon,
-        required String emoji,
-        required Color color,
-        required VoidCallback onTap,
-      }) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha:0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    emoji,
-                    style: const TextStyle(fontSize: 28),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: color,
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // ── Favorites section ───────────────────────────────────────────────────
 
-  Widget _buildStatistics(BuildContext context, ToolkitStatistics stats) {
-    final totalSessions = stats.totalBreathingSessions +
-        stats.totalCbtSessions +
-        stats.totalGroundingSessions +
-        stats.totalDistractionSessions;
+  Widget _buildFavoritesSection(
+    BuildContext context,
+    String mode,
+    WidgetRef ref,
+  ) {
+    final favoritesAsync = ref.watch(favoriteExercisesProvider(mode));
 
-    if (totalSessions == 0) {
-      return const SizedBox();
-    }
+    return favoritesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (favorites) {
+        if (favorites.isEmpty) return const SizedBox.shrink();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Your Progress',
-              style: Theme.of(context).textTheme.titleLarge,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                'Your Favorites',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    label: 'Sessions',
-                    value: '$totalSessions',
-                    icon: Icons.check_circle,
-                  ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 72,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: favorites.length,
+                itemBuilder: (context, i) => ExerciseChip(
+                  exercise: favorites[i],
+                  onTap: () =>
+                      _navigateToDetail(context, favorites[i], mode, ref),
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    label: 'Most Effective',
-                    value: stats.mostEffectiveTechnique,
-                    icon: Icons.star,
-                  ),
-                ),
-              ],
+              ),
             ),
+            const SizedBox(height: 24),
           ],
+        );
+      },
+    );
+  }
+
+  // ── Recents section ─────────────────────────────────────────────────────
+
+  Widget _buildRecentsSection(
+    BuildContext context,
+    String mode,
+    WidgetRef ref,
+  ) {
+    final recentsAsync = ref.watch(recentExercisesProvider);
+
+    return recentsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (recents) {
+        if (recents.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                'Recently Used',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...recents.map((exercise) => Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: ExerciseCard(
+                    exercise: exercise,
+                    onTap: () =>
+                        _navigateToDetail(context, exercise, mode, ref),
+                    onFavoriteToggle: () => ref
+                        .read(toolkitSessionProvider.notifier)
+                        .toggleFavorite(exercise.id),
+                    showRepeatButton: true,
+                    onRepeat: () =>
+                        _navigateToExercise(context, exercise, mode),
+                  ),
+                )),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── All exercises section ───────────────────────────────────────────────
+
+  Widget _buildAllExercisesSection(
+    BuildContext context,
+    String mode,
+    WidgetRef ref,
+  ) {
+    final exercisesAsync = ref.watch(toolkitExercisesProvider(mode));
+
+    return exercisesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error loading exercises: $e')),
+      data: (exercises) {
+        if (exercises.isEmpty) {
+          return const Center(child: Text('No exercises available'));
+        }
+
+        return Column(
+          children: exercises.map((exercise) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: ExerciseCard(
+                exercise: exercise,
+                onTap: () =>
+                    _navigateToDetail(context, exercise, mode, ref),
+                onFavoriteToggle: () => ref
+                    .read(toolkitSessionProvider.notifier)
+                    .toggleFavorite(exercise.id),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  // ── Navigation helpers ──────────────────────────────────────────────────
+
+  void _navigateToDetail(
+    BuildContext context,
+    ToolkitExercise exercise,
+    String mode,
+    WidgetRef ref,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExerciseDetailScreen(
+          exercise: exercise,
+          mode: mode,
         ),
       ),
     );
   }
 
-  Widget _buildStatItem(
-      BuildContext context, {
-        required String label,
-        required String value,
-        required IconData icon,
-      }) {
-    return Column(
-      children: [
-        Icon(icon, color: AppTheme.primaryColor, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
+  void _navigateToExercise(
+    BuildContext context,
+    ToolkitExercise exercise,
+    String mode,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExerciseScreenRouter(
+          exercise: exercise,
+          mode: mode,
         ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  void _showBreathingOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildBreathingOptionsSheet(context),
-    );
-  }
-
-  Widget _buildBreathingOptionsSheet(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle bar
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Choose Breathing Pattern',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-
-          ...BreathingPattern.values
-              .where((pattern) => pattern != BreathingPattern.custom)
-              .map((pattern) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha:0.1),
-                  child: Text(pattern.emoji, style: const TextStyle(fontSize: 20)),
-                ),
-                title: Text(pattern.displayName),
-                subtitle: Text(pattern.description),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BreathingExerciseScreen(
-                        pattern: pattern,
-                        cravingId: cravingId,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          }),
-
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  void _showCbtOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildCbtOptionsSheet(context),
-    );
-  }
-
-  Widget _buildCbtOptionsSheet(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle bar
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Choose CBT Technique',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-
-          ...CbtTechnique.values.map((technique) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppTheme.successColor.withValues(alpha:0.1),
-                  child: Text(technique.emoji, style: const TextStyle(fontSize: 20)),
-                ),
-                title: Text(technique.displayName),
-                subtitle: Text(
-                  '${technique.description}\n~${technique.estimatedMinutes} min',
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CbtTechniqueScreen(
-                        technique: technique,
-                        cravingId: cravingId,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          }),
-
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  void _showGroundingOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildGroundingOptionsSheet(context),
-    );
-  }
-
-  Widget _buildGroundingOptionsSheet(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle bar
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Choose Grounding Exercise',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-
-          ...GroundingExercise.values.map((exercise) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppTheme.warningColor.withValues(alpha:0.1),
-                  child: Text(exercise.emoji, style: const TextStyle(fontSize: 20)),
-                ),
-                title: Text(exercise.displayName),
-                subtitle: Text(
-                  '${exercise.description}\n~${exercise.estimatedMinutes} min',
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GroundingExerciseScreen(
-                        exercise: exercise,
-                        cravingId: cravingId,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          }),
-
-          const SizedBox(height: 16),
-        ],
       ),
     );
   }

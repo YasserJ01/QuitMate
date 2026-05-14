@@ -5,6 +5,7 @@ import '../../data/models/toolkit_models.dart';
 import '../providers/toolkit_provider.dart';
 import '../widgets/breathing_animation.dart';
 import '../widgets/effectiveness_rating_dialog.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 class BreathingExerciseScreen extends ConsumerStatefulWidget {
   final BreathingPattern pattern;
@@ -32,8 +33,29 @@ class _BreathingExerciseScreenState
       ref
           .read(breathingExerciseProvider(widget.pattern).notifier)
           .setDuration(_selectedDuration);
+
+      // Start session tracking via unified session notifier
+      final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+      if (userId.isNotEmpty) {
+        final exerciseId = _exerciseIdForPattern(widget.pattern);
+        ref.read(toolkitSessionProvider.notifier).startSessionById(
+              exerciseId: exerciseId,
+              exerciseName: widget.pattern.displayName,
+              exerciseCategory: 'breathing',
+              userId: userId,
+              mode: ref.read(currentModeProvider).valueOrNull ?? 'quitSmoking',
+            );
+      }
     });
   }
+
+  String _exerciseIdForPattern(BreathingPattern pattern) => switch (pattern) {
+        BreathingPattern.box => 'breathing-box',
+        BreathingPattern.relaxing => 'breathing-relaxing',
+        BreathingPattern.energizing => 'breathing-energizing',
+        BreathingPattern.calm => 'breathing-calm',
+        BreathingPattern.custom => 'breathing-box',
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +63,7 @@ class _BreathingExerciseScreenState
     ref.listen<BreathingExerciseState>(
       breathingExerciseProvider(widget.pattern),
       (previous, next) {
-        final wasEnded = previous?.session?.endTime != null;
-        final isEnded = next.session?.endTime != null;
-        if (!wasEnded && isEnded) {
+        if ((previous?.isCompleted ?? false) == false && next.isCompleted) {
           ref.invalidate(toolkitStatisticsProvider);
         }
       },

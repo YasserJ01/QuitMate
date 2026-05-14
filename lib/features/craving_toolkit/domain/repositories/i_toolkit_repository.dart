@@ -37,4 +37,13 @@ abstract class IToolkitRepository {
     DateTime? since,
     int? limit,
   });
+
+  /// Returns sessions for [userId] within the last [days] days.
+  Future<List<ToolkitSession>> getRecentSessions({
+    required String userId,
+    int days = 7,
+  });
+
+  /// Returns aggregated statistics for the weekly summary.
+  Future<Map<String, dynamic>> getWeeklySummary({required String userId});
 }

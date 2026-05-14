@@ -32,18 +32,16 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
   }
 
   @override
-  Stream<List<ToolkitExercise>> watchFavorites(String mode) {
-    // Isar watch on favorites — filters in-memory for mode
-    return _db.asStream().asyncMap((isar) async {
-      final models = await isar.toolkitExerciseModels
-          .filter()
-          .isFavoriteEqualTo(true)
-          .findAll();
-      return models
-          .where((m) => m.isSharedBothModes || m.modeFilter == mode)
-          .map(_toEntity)
-          .toList();
-    });
+  Stream<List<ToolkitExercise>> watchFavorites(String mode) async* {
+    final isar = await _db;
+    yield* isar.toolkitExerciseModels
+        .filter()
+        .isFavoriteEqualTo(true)
+        .watch(fireImmediately: true)
+        .map((models) => models
+            .where((m) => m.isSharedBothModes || m.modeFilter == mode)
+            .map(_toEntity)
+            .toList());
   }
 
   @override
@@ -173,6 +171,67 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
 
     final models = await query.findAll();
     return models.map(_sessionToEntity).toList();
+  }
+
+  @override
+  Future<List<ToolkitSession>> getRecentSessions({
+    required String userId,
+    int days = 7,
+  }) async {
+    final isar = await _db;
+    final since = DateTime.now().toUtc().subtract(Duration(days: days));
+    final models = await isar.toolkitSessionModels
+        .filter()
+        .userIdEqualTo(userId)
+        .startedAtGreaterThan(since)
+        .sortByStartedAtDesc()
+        .findAll();
+    return models.map(_sessionToEntity).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getWeeklySummary({
+    required String userId,
+  }) async {
+    final sessions = await getRecentSessions(userId: userId, days: 7);
+
+    final completedSessions = sessions.where((s) => s.wasCompleted).toList();
+    final exerciseNames =
+        sessions.map((s) => s.exerciseName).toSet().toList();
+
+    // Most used exercise (by count)
+    final exerciseCounts = <String, int>{};
+    for (final session in sessions) {
+      exerciseCounts[session.exerciseName] =
+          (exerciseCounts[session.exerciseName] ?? 0) + 1;
+    }
+    String? mostUsed;
+    int maxCount = 0;
+    for (final entry in exerciseCounts.entries) {
+      if (entry.value > maxCount) {
+        maxCount = entry.value;
+        mostUsed = entry.key;
+      }
+    }
+
+    // Average feedback rating
+    double avgRating = 0;
+    final ratedSessions =
+        completedSessions.where((s) => s.feedbackRating != null).toList();
+    if (ratedSessions.isNotEmpty) {
+      avgRating = ratedSessions
+              .map((s) => s.feedbackRating!)
+              .reduce((a, b) => a + b) /
+          ratedSessions.length;
+    }
+
+    return {
+      'totalSessionsThisWeek': sessions.length,
+      'completedSessionsThisWeek': completedSessions.length,
+      'mostUsedExercise': mostUsed ?? 'None',
+      'exercisesUsed': exerciseNames,
+      'averageFeedbackRating': avgRating,
+    };
   }
 
   // ── Mappers ─────────────────────────────────────────────────────────────

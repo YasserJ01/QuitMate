@@ -18,21 +18,29 @@ class JournalRepositoryImpl implements IJournalRepository {
     int? limit,
   }) async {
     final isar = await _db;
-    // Use dynamic to bypass Isar's type-state QueryBuilder — the generic
-    // parameter changes after .sortBy*() / .filter() / .limit().
-    dynamic query = isar.journalEntryModels
-        .filter()
-        .userIdEqualTo(userId)
-        .sortByCreatedAtDesc();
+
+    // Build filter chain without dynamic to avoid Isar type-state runtime errors.
+    QueryBuilder<JournalEntryModel, JournalEntryModel, QAfterFilterCondition>
+        filterQuery;
 
     if (moodFilter != null) {
-      query = query.filter().moodTagEqualTo(moodFilter);
-    }
-    if (limit != null) {
-      query = query.limit(limit);
+      filterQuery = isar.journalEntryModels
+          .filter()
+          .userIdEqualTo(userId)
+          .and()
+          .moodTagEqualTo(moodFilter);
+    } else {
+      filterQuery = isar.journalEntryModels
+          .filter()
+          .userIdEqualTo(userId);
     }
 
-    final models = await query.findAll();
+    final sortedQuery = filterQuery.sortByCreatedAtDesc();
+
+    final models = limit != null
+        ? await sortedQuery.limit(limit).findAll()
+        : await sortedQuery.findAll();
+
     return models.map(_toEntity).toList();
   }
 

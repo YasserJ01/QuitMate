@@ -440,15 +440,8 @@ class _GroundingExerciseScreenState
         .read(groundingSessionProvider(widget.exercise).notifier)
         .complete(effectivenessRating);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Great job staying grounded!'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
-      Navigator.pop(context);
-    }
+    // Completion screen renders automatically via state.isCompleted
+    // No Navigator.pop here — user taps "Return to Toolkit" to leave
   }
 
   Future<bool?> _showExitConfirmation() {
