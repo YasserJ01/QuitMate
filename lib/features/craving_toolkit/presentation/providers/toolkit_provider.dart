@@ -6,6 +6,7 @@ import '../../domain/entities/toolkit_exercise.dart';
 import '../../domain/entities/toolkit_session.dart';
 import '../../domain/repositories/i_toolkit_repository.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
+import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 
 // ─── Repository providers ──────────────────────────────────────────────────
 
@@ -39,6 +40,13 @@ final recentExercisesProvider =
     FutureProvider.autoDispose<List<ToolkitExercise>>((ref) async {
   final repo = ref.watch(toolkitExerciseRepoProvider);
   return repo.getRecentExercises(limit: 3);
+});
+
+// ─── Current mode (derived from user profile) ──────────────────────────────
+
+final currentModeProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final onboardingState = ref.watch(onboardingProvider);
+  return onboardingState.goalType?.name;
 });
 
 // ─── Active session notifier ───────────────────────────────────────────────
@@ -84,6 +92,35 @@ class ToolkitSessionNotifier extends AutoDisposeNotifier<ToolkitSessionState> {
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         exerciseCategory: exercise.category.name,
+        startedAt: DateTime.now().toUtc(),
+        mode: mode,
+      ),
+    );
+  }
+
+  /// Field-level overload for screens that construct the exercise ID themselves.
+  Future<void> startSessionById({
+    required String exerciseId,
+    required String exerciseName,
+    required String exerciseCategory,
+    required String userId,
+    required String mode,
+  }) async {
+    final repo = ref.read(toolkitExerciseRepoProvider);
+    final sessionId = await repo.startSession(
+      exerciseId: exerciseId,
+      userId: userId,
+      mode: mode,
+    );
+    await repo.markExerciseUsed(exerciseId);
+    ref.invalidate(recentExercisesProvider);
+
+    state = state.copyWith(
+      activeSession: ToolkitSession(
+        id: sessionId,
+        exerciseId: exerciseId,
+        exerciseName: exerciseName,
+        exerciseCategory: exerciseCategory,
         startedAt: DateTime.now().toUtc(),
         mode: mode,
       ),
@@ -143,7 +180,6 @@ class BreathingExerciseState {
   final int phaseSecondsRemaining;
   final bool isRunning;
   final bool isCompleted;
-  final BreathingSession? session;
 
   const BreathingExerciseState({
     required this.pattern,
@@ -154,7 +190,6 @@ class BreathingExerciseState {
     this.phaseSecondsRemaining = 4,
     this.isRunning = false,
     this.isCompleted = false,
-    this.session,
   });
 
   BreathingExerciseState copyWith({
@@ -166,7 +201,6 @@ class BreathingExerciseState {
     int? phaseSecondsRemaining,
     bool? isRunning,
     bool? isCompleted,
-    BreathingSession? session,
   }) {
     return BreathingExerciseState(
       pattern: pattern ?? this.pattern,
@@ -178,7 +212,6 @@ class BreathingExerciseState {
           phaseSecondsRemaining ?? this.phaseSecondsRemaining,
       isRunning: isRunning ?? this.isRunning,
       isCompleted: isCompleted ?? this.isCompleted,
-      session: session ?? this.session,
     );
   }
 
@@ -205,20 +238,14 @@ class BreathingExerciseState {
 }
 
 class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
-  final ToolkitRepository _repository;
-  final String _userId;
-
-  BreathingExerciseNotifier(
-    this._repository,
-    this._userId,
-    BreathingPattern pattern,
-  ) : super(
-        BreathingExerciseState(
-          pattern: pattern,
-          targetDuration: 60, // Default 1 minute
-          phaseSecondsRemaining: pattern.inhaleSeconds,
-        ),
-      );
+  BreathingExerciseNotifier(BreathingPattern pattern)
+      : super(
+          BreathingExerciseState(
+            pattern: pattern,
+            targetDuration: 60, // Default 1 minute
+            phaseSecondsRemaining: pattern.inhaleSeconds,
+          ),
+        );
 
   void setDuration(int seconds) {
     state = state.copyWith(targetDuration: _alignDuration(seconds));
@@ -239,19 +266,8 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
 
     final alignedDuration = _alignDuration(state.targetDuration);
 
-    // Create session - INITIALIZE ALL LATE FIELDS
-    final session = BreathingSession()
-      ..userId = _userId
-      ..pattern = state.pattern
-      ..durationSeconds = alignedDuration
-      ..cyclesCompleted = 0
-      ..startTime = DateTime.now();
-
-    final savedSession = await _repository.addBreathingSession(session);
-
     state = state.copyWith(
       isRunning: true,
-      session: savedSession,
       elapsedSeconds: 0,
       currentCycle: 0,
       currentPhase: 'inhale',
@@ -272,23 +288,13 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
   }
 
   Future<void> complete(int effectivenessRating) async {
-    if (state.session == null) return;
-
-    final session = state.session!;
-    if (session.endTime == null) {
-      session.endTime = DateTime.now();
-      session.cyclesCompleted = state.currentCycle;
-    }
-    session.effectivenessRating = effectivenessRating;
-
-    await _repository.updateBreathingSession(session);
-
-    state = state.copyWith(isRunning: false, isCompleted: true, session: session);
+    state = state.copyWith(isRunning: false, isCompleted: true);
   }
 
   void _startTimer() {
     Future.delayed(const Duration(seconds: 1), () async {
-      if (!state.isRunning || mounted == false) return;
+      if (!mounted) return;
+      if (!state.isRunning) return;
 
       final newElapsed = state.elapsedSeconds + 1;
       final newPhaseSeconds = state.phaseSecondsRemaining - 1;
@@ -304,13 +310,6 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
             completedCycles += 1;
           }
 
-          BreathingSession? updatedSession = state.session;
-          if (updatedSession != null) {
-            updatedSession.endTime = DateTime.now();
-            updatedSession.cyclesCompleted = completedCycles;
-            await _repository.updateBreathingSession(updatedSession);
-          }
-
           // Exercise complete at end of current phase
           state = state.copyWith(
             elapsedSeconds: newElapsed,
@@ -318,7 +317,6 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
             currentCycle: completedCycles,
             isRunning: false,
             isCompleted: true,
-            session: updatedSession,
           );
           return;
         }
@@ -349,14 +347,21 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
 
     switch (state.currentPhase) {
       case 'inhale':
-        nextPhase = 'hold';
-        seconds = state.pattern.holdSeconds;
+        // Skip hold if holdSeconds is 0 (calm, energizing patterns)
+        if (state.pattern.holdSeconds > 0) {
+          nextPhase = 'hold';
+          seconds = state.pattern.holdSeconds;
+        } else {
+          nextPhase = 'exhale';
+          seconds = state.pattern.exhaleSeconds;
+        }
         break;
       case 'hold':
         nextPhase = 'exhale';
         seconds = state.pattern.exhaleSeconds;
         break;
       case 'exhale':
+        // Skip pause if pauseSeconds is 0
         if (state.pattern.pauseSeconds > 0) {
           nextPhase = 'pause';
           seconds = state.pattern.pauseSeconds;
@@ -394,15 +399,7 @@ final breathingExerciseProvider = StateNotifierProvider.autoDispose
       BreathingExerciseState,
       BreathingPattern
     >((ref, pattern) {
-      final repository = ref.watch(toolkitRepositoryProvider);
-      final userIdAsync = ref.watch(currentUserIdProvider);
-
-      return userIdAsync.when(
-        data: (userId) =>
-            BreathingExerciseNotifier(repository, userId ?? '', pattern),
-        loading: () => BreathingExerciseNotifier(repository, '', pattern),
-        error: (_, _) => BreathingExerciseNotifier(repository, '', pattern),
-      );
+      return BreathingExerciseNotifier(pattern);
     });
 
 // ============= CBT SESSION STATE =============

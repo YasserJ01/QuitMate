@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../providers/toolkit_provider.dart';
+import '../widgets/post_exercise_feedback_sheet.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 /// Mode-specific delay-and-distract exercise with timer and activity suggestions.
-class DelayDistractScreen extends StatefulWidget {
+class DelayDistractScreen extends ConsumerStatefulWidget {
   final String mode; // GoalType.name
 
   const DelayDistractScreen({super.key, required this.mode});
 
   @override
-  State<DelayDistractScreen> createState() => _DelayDistractScreenState();
+  ConsumerState<DelayDistractScreen> createState() =>
+      _DelayDistractScreenState();
 }
 
-class _DelayDistractScreenState extends State<DelayDistractScreen> {
+class _DelayDistractScreenState extends ConsumerState<DelayDistractScreen> {
   int _selectedMinutes = 5;
   int _elapsedSeconds = 0;
   bool _isRunning = false;
@@ -39,26 +44,59 @@ class _DelayDistractScreenState extends State<DelayDistractScreen> {
         ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+      final exerciseId = _isSmoking
+          ? 'delay-distract-smoking'
+          : 'delay-distract-reduction';
+      if (userId.isNotEmpty) {
+        ref.read(toolkitSessionProvider.notifier).startSessionById(
+              exerciseId: exerciseId,
+              exerciseName: 'Delay & Distract',
+              exerciseCategory: 'delayAndDistract',
+              userId: userId,
+              mode: widget.mode,
+            );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Delay & Distract'),
-        actions: [
-          if (_isRunning)
-            TextButton(
-              onPressed: () => setState(() {
-                _isRunning = false;
-                _isCompleted = true;
-              }),
-              child: const Text('Done'),
-            ),
-        ],
+    return PopScope(
+      canPop: !_isRunning,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirm = await _showExitConfirmation();
+        if (confirm == true && mounted) {
+          ref
+              .read(toolkitSessionProvider.notifier)
+              .endSession(completed: false);
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Delay & Distract'),
+          actions: [
+            if (_isRunning)
+              TextButton(
+                onPressed: () => setState(() {
+                  _isRunning = false;
+                  _isCompleted = true;
+                }),
+                child: const Text('Done'),
+              ),
+          ],
+        ),
+        body: _isCompleted
+            ? _buildCompletion()
+            : _isRunning
+                ? _buildExercise()
+                : _buildIntro(),
       ),
-      body: _isCompleted
-          ? _buildCompletion()
-          : _isRunning
-              ? _buildExercise()
-              : _buildIntro(),
     );
   }
 
@@ -108,7 +146,8 @@ class _DelayDistractScreenState extends State<DelayDistractScreen> {
                 });
                 _tick();
               },
-              child: const Text('Start Timer', style: TextStyle(fontSize: 18)),
+              child:
+                  const Text('Start Timer', style: TextStyle(fontSize: 18)),
             ),
           ),
         ],
@@ -117,8 +156,8 @@ class _DelayDistractScreenState extends State<DelayDistractScreen> {
   }
 
   Widget _buildExercise() {
-    final remaining =
-        (_selectedMinutes * 60 - _elapsedSeconds).clamp(0, _selectedMinutes * 60);
+    final remaining = (_selectedMinutes * 60 - _elapsedSeconds)
+        .clamp(0, _selectedMinutes * 60);
 
     return Column(
       children: [
@@ -179,7 +218,7 @@ class _DelayDistractScreenState extends State<DelayDistractScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => _showFeedbackSheet(),
               child: const Text('I am okay — close'),
             ),
           ),
@@ -202,5 +241,57 @@ class _DelayDistractScreenState extends State<DelayDistractScreen> {
         _tick();
       }
     });
+  }
+
+  void _showFeedbackSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: PostExerciseFeedbackSheet(
+          exerciseName: 'Delay & Distract',
+          wasCompleted: _isCompleted,
+          onRatingSelected: (rating) {
+            Navigator.pop(context);
+            ref
+                .read(toolkitSessionProvider.notifier)
+                .recordFeedback(rating);
+            ref
+                .read(toolkitSessionProvider.notifier)
+                .endSession(completed: _isCompleted);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showExitConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Exercise?'),
+        content: const Text(
+          'Your progress won\'t be saved if you exit now. Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Continue Exercise'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
   }
 }

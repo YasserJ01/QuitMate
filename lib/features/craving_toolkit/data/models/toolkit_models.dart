@@ -48,7 +48,7 @@ enum BreathingPattern {
       case BreathingPattern.relaxing:
         return 4;
       case BreathingPattern.energizing:
-        return 4;
+        return 6;
       case BreathingPattern.calm:
         return 4;
       case BreathingPattern.custom:
@@ -63,9 +63,9 @@ enum BreathingPattern {
       case BreathingPattern.relaxing:
         return 7;
       case BreathingPattern.energizing:
-        return 4;
+        return 0;
       case BreathingPattern.calm:
-        return 6;
+        return 0;
       case BreathingPattern.custom:
         return 4;
     }
@@ -78,9 +78,9 @@ enum BreathingPattern {
       case BreathingPattern.relaxing:
         return 8;
       case BreathingPattern.energizing:
-        return 4;
+        return 2;
       case BreathingPattern.calm:
-        return 4;
+        return 6;
       case BreathingPattern.custom:
         return 4;
     }

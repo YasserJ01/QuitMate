@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../providers/toolkit_provider.dart';
 import '../widgets/post_exercise_feedback_sheet.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 /// Guided urge surfing exercise with mode-specific wording and timer.
 class UrgeSurfingScreen extends ConsumerStatefulWidget {
@@ -23,23 +25,53 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
   bool get _isSmoking => widget.mode.toLowerCase() == 'quitsmoking';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+      final exerciseId =
+          _isSmoking ? 'urge-surfing-smoking' : 'urge-surfing-reduction';
+      if (userId.isNotEmpty) {
+        ref.read(toolkitSessionProvider.notifier).startSessionById(
+              exerciseId: exerciseId,
+              exerciseName: 'Urge Surfing',
+              exerciseCategory: 'urgeSurfing',
+              userId: userId,
+              mode: widget.mode,
+            );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Urge Surfing'),
-        actions: [
-          if (_isRunning)
-            TextButton(
-              onPressed: _exit,
-              child: const Text('Skip'),
-            ),
-        ],
+    return PopScope(
+      canPop: !_isRunning,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirm = await _showExitConfirmation();
+        if (confirm == true && mounted) {
+          ref.read(toolkitSessionProvider.notifier).endSession(completed: false);
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Urge Surfing'),
+          actions: [
+            if (_isRunning)
+              TextButton(
+                onPressed: _exit,
+                child: const Text('Skip'),
+              ),
+          ],
+        ),
+        body: _isCompleted
+            ? _buildCompletion()
+            : _isRunning
+                ? _buildExercise()
+                : _buildIntro(),
       ),
-      body: _isCompleted
-          ? _buildCompletion()
-          : _isRunning
-              ? _buildExercise()
-              : _buildIntro(),
     );
   }
 
@@ -98,7 +130,8 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
 
   Widget _buildExercise() {
     final remaining =
-        (_selectedMinutes * 60 - _elapsedSeconds).clamp(0, _selectedMinutes * 60);
+        (_selectedMinutes * 60 - _elapsedSeconds)
+            .clamp(0, _selectedMinutes * 60);
     final progress = _elapsedSeconds / (_selectedMinutes * 60);
     final third = (_selectedMinutes * 60) ~/ 3;
 
@@ -124,7 +157,8 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
               children: [
                 Text(
                   '${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+                  style:
+                      const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
                 ),
                 const SizedBox(height: 32),
                 if (prompt != null)
@@ -154,7 +188,8 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle, size: 80, color: AppTheme.successColor),
+          const Icon(Icons.check_circle,
+              size: 80, color: AppTheme.successColor),
           const SizedBox(height: 24),
           Text(
             'Well done!',
@@ -242,8 +277,57 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
           wasCompleted: _isCompleted,
           onRatingSelected: (rating) {
             Navigator.pop(context);
+            ref
+                .read(toolkitSessionProvider.notifier)
+                .recordFeedback(rating);
+            ref
+                .read(toolkitSessionProvider.notifier)
+                .endSession(completed: _isCompleted);
+
+            // Conditional follow-up: if abandoned AND rated "not really"
+            if (!_isCompleted && rating == 2 && mounted) {
+              Future.microtask(() {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Try a different exercise?'),
+                      action: SnackBarAction(
+                        label: 'Yes',
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              });
+            }
           },
         ),
+      ),
+    );
+  }
+
+  Future<bool?> _showExitConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Exercise?'),
+        content: const Text(
+          'Your progress won\'t be saved if you exit now. Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Continue Exercise'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Exit'),
+          ),
+        ],
       ),
     );
   }

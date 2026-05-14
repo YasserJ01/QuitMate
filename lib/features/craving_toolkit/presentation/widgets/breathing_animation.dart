@@ -45,6 +45,9 @@ class _BreathingAnimationState extends State<BreathingAnimation>
   void _setupAnimation() {
     final duration = _getPhaseDuration();
 
+    // Stop any in-progress animation before resetting
+    _controller.stop();
+
     // Reset the controller with new duration
     _controller.duration = Duration(seconds: duration);
 

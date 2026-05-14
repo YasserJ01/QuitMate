@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../providers/toolkit_provider.dart';
+import '../providers/journal_provider.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 /// Toolkit exercise for writing a personal relapse recovery plan.
 ///
 /// Distinct from the panic mode screen — this is a deliberate, reflective
 /// exercise accessed from the toolkit catalogue.
-class RelapseRecoveryPlanScreen extends StatefulWidget {
+class RelapseRecoveryPlanScreen extends ConsumerStatefulWidget {
   final String mode;
 
   const RelapseRecoveryPlanScreen({super.key, required this.mode});
 
   @override
-  State<RelapseRecoveryPlanScreen> createState() =>
+  ConsumerState<RelapseRecoveryPlanScreen> createState() =>
       _RelapseRecoveryPlanScreenState();
 }
 
-class _RelapseRecoveryPlanScreenState extends State<RelapseRecoveryPlanScreen> {
+class _RelapseRecoveryPlanScreenState
+    extends ConsumerState<RelapseRecoveryPlanScreen> {
   final _triggerController = TextEditingController();
   final _learnController = TextEditingController();
   final _supportController = TextEditingController();
@@ -23,6 +28,23 @@ class _RelapseRecoveryPlanScreenState extends State<RelapseRecoveryPlanScreen> {
   final _intentionController = TextEditingController();
 
   bool get _isSmoking => widget.mode.toLowerCase() == 'quitsmoking';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+      if (userId.isNotEmpty) {
+        ref.read(toolkitSessionProvider.notifier).startSessionById(
+              exerciseId: 'relapse-recovery-plan',
+              exerciseName: 'Recovery Plan Exercise',
+              exerciseCategory: 'relapseRecoveryPlanning',
+              userId: userId,
+              mode: widget.mode,
+            );
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -96,16 +118,9 @@ class _RelapseRecoveryPlanScreenState extends State<RelapseRecoveryPlanScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Your recovery plan is ready.'),
-                      backgroundColor: AppTheme.successColor,
-                    ),
-                  );
-                },
-                child: const Text('Save My Plan', style: TextStyle(fontSize: 16)),
+                onPressed: _onSave,
+                child: const Text('Save My Plan',
+                    style: TextStyle(fontSize: 16)),
               ),
             ),
             const SizedBox(height: 32),
@@ -146,5 +161,74 @@ class _RelapseRecoveryPlanScreenState extends State<RelapseRecoveryPlanScreen> {
         ],
       ),
     );
+  }
+
+  void _onSave() async {
+    // End session as completed
+    ref.read(toolkitSessionProvider.notifier).endSession(completed: true);
+
+    // Build plan content for journal
+    final content = _buildPlanContent();
+
+    // Offer journal save
+    if (content.isNotEmpty) {
+      final saveToJournal = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Save to Journal?'),
+          content: const Text(
+            'Would you like to save this recovery plan to your journal?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No thanks'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (saveToJournal == true && mounted) {
+        await ref.read(journalNotifierProvider.notifier).createEntry(
+              content: content,
+              sourceExerciseId: 'relapse-recovery-plan',
+              sourceExerciseName: 'Recovery Plan Exercise',
+            );
+      }
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your recovery plan is ready.'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    }
+  }
+
+  String _buildPlanContent() {
+    final buffer = StringBuffer();
+    if (_triggerController.text.trim().isNotEmpty) {
+      buffer.writeln('Trigger: ${_triggerController.text.trim()}');
+    }
+    if (_learnController.text.trim().isNotEmpty) {
+      buffer.writeln('Lesson: ${_learnController.text.trim()}');
+    }
+    if (_supportController.text.trim().isNotEmpty) {
+      buffer.writeln('Support: ${_supportController.text.trim()}');
+    }
+    if (_nextTimeController.text.trim().isNotEmpty) {
+      buffer.writeln('Next Time: ${_nextTimeController.text.trim()}');
+    }
+    if (_intentionController.text.trim().isNotEmpty) {
+      buffer.writeln('Intention: ${_intentionController.text.trim()}');
+    }
+    return buffer.toString();
   }
 }

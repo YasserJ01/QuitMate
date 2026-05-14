@@ -1,5 +1,4 @@
 import 'package:isar/isar.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/database/isar_service.dart';
 import '../models/toolkit_exercise_model.dart';
@@ -10,8 +9,6 @@ import '../models/toolkit_exercise_model.dart';
 /// Subsequent runs only add exercises that don't exist yet, making
 /// schema additions migration-free.
 class ToolkitSeedService {
-  static const _uuid = Uuid();
-
   Future<void> seedIfNeeded() async {
     final isar = await IsarService.instance;
     final count = await isar.toolkitExerciseModels.count();
@@ -120,43 +117,68 @@ class ToolkitSeedService {
           'This redirects your mind away from the craving.',
     ),
 
-    // ── Urge Surfing (1 exercise, mode-specific wording) ──────────────────
-    _make(
-      id: 'urge-surfing',
+    // ── Urge Surfing (2 mode-specific entries) ────────────────────────────
+    _makeMode(
+      id: 'urge-surfing-smoking',
       name: 'Urge Surfing',
       category: 'urgeSurfing',
       duration: 300,
-      shared: true,
-      shortDesc: 'Ride the wave of craving without giving in.',
+      modeFilter: 'quitSmoking',
+      shortDesc: 'Ride the nicotine craving wave. Peak passes in 3-5 minutes.',
       fullInstr:
-          'Urges are like ocean waves — they rise, peak, and fall. '
-          'Set a timer for 5 minutes. Notice where you feel the urge in '
-          'your body. Observe it without judgment. Watch it change. '
+          'Nicotine cravings peak within 3–5 minutes. '
+          'Set a timer. Notice where you feel the urge in your body. '
+          'Observe it without judgment. Watch it change. '
           'You are not the urge — you are the observer.',
-      modeNoteSmoking:
+      modeNote:
           'Nicotine cravings typically peak within 3–5 minutes. '
           'You do not need to fight it — just observe it.',
-      modeNoteReduction:
-          'Urges follow the same wave pattern. They rise, peak, and fall. '
-          'You are not the urge.',
+    ),
+    _makeMode(
+      id: 'urge-surfing-reduction',
+      name: 'Urge Surfing',
+      category: 'urgeSurfing',
+      duration: 300,
+      modeFilter: 'reduceMasturbation',
+      shortDesc: 'Urges are waves. They rise, peak, and fall.',
+      fullInstr:
+          'Urges follow the same wave pattern. '
+          'They rise, peak, and fall. You are not the urge. '
+          'Set a timer. Notice where you feel the urge in your body. '
+          'Observe it without judgment.',
+      modeNote:
+          'Urges follow the same wave pattern. '
+          'They rise, peak, and fall. You are not the urge.',
     ),
 
-    // ── Delay & Distract (1 exercise, mode-specific) ──────────────────────
-    _make(
-      id: 'delay-distract',
+    // ── Delay & Distract (2 mode-specific entries) ──────────────────────
+    _makeMode(
+      id: 'delay-distract-smoking',
       name: 'Delay & Distract',
       category: 'delayAndDistract',
       duration: 300,
-      shared: true,
+      modeFilter: 'quitSmoking',
       shortDesc: 'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
       fullInstr:
           'Set a timer for 5–10 minutes. Choose a distraction activity: '
           'drink water, chew gum, do push-ups, call a friend, or step outside. '
           'When the timer ends, check if the craving has passed.',
-      modeNoteSmoking:
+      modeNote:
           'Try oral substitutes: sugar-free gum, carrot sticks, or a toothpick. '
           'Keep your hands busy.',
-      modeNoteReduction:
+    ),
+    _makeMode(
+      id: 'delay-distract-reduction',
+      name: 'Delay & Distract',
+      category: 'delayAndDistract',
+      duration: 300,
+      modeFilter: 'reduceMasturbation',
+      shortDesc: 'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
+      fullInstr:
+          'Set a timer for 5–10 minutes. Choose a distraction activity: '
+          'drink water, do push-ups, call a friend, or step outside. '
+          'When the timer ends, check if the urge has passed.',
+      modeNote:
           'Try physical activity: 10 push-ups, a brisk walk, or stretching. '
           'Physical exertion can short-circuit an urge.',
     ),
@@ -242,9 +264,23 @@ class ToolkitSeedService {
           'heart rate and calms your nervous system. Evidence-based and '
           'effective within seconds.',
     ),
+
+    // ── Counting (1 exercise, shared) ────────────────────────────────────
+    _make(
+      id: 'grounding-counting',
+      name: 'Counting (Backwards by 7)',
+      category: 'grounding',
+      duration: 120,
+      shared: true,
+      shortDesc: 'Count backwards by 7s to reset your focus.',
+      fullInstr:
+          'Start from a large number and count backwards by 7. '
+          'This engages your brain in a focused task that distracts '
+          'from cravings. Choose easy (107), medium (500), or hard (1000).',
+    ),
   ];
 
-  // ── Factory helper ──────────────────────────────────────────────────────
+  // ── Factory helpers ──────────────────────────────────────────────────────
 
   static ToolkitExerciseModel _make({
     required String id,
@@ -254,11 +290,7 @@ class ToolkitSeedService {
     required bool shared,
     required String shortDesc,
     required String fullInstr,
-    String? modeNoteSmoking,
-    String? modeNoteReduction,
   }) {
-    // For shared exercises, store no mode-specific note.
-    // For mode-exclusive exercises, the note is baked into fullInstructions.
     final model = ToolkitExerciseModel()
       ..exerciseId = id
       ..name = name
@@ -267,12 +299,38 @@ class ToolkitSeedService {
       ..lastUsedAt = null
       ..durationEstimateSeconds = duration
       ..isSharedBothModes = shared
-      ..modeFilter = null // all exercises in this catalogue are shared
+      ..modeFilter = null
       ..shortDescription = shortDesc
       ..fullInstructions = fullInstr
       ..modeSpecificNote = null
       ..seededAt = DateTime.now().toUtc();
 
     return model;
+  }
+
+  /// Creates a mode-specific exercise entry with a non-null [modeFilter].
+  static ToolkitExerciseModel _makeMode({
+    required String id,
+    required String name,
+    required String category,
+    required int duration,
+    required String modeFilter,
+    required String shortDesc,
+    required String fullInstr,
+    String? modeNote,
+  }) {
+    return ToolkitExerciseModel()
+      ..exerciseId = id
+      ..name = name
+      ..category = category
+      ..isFavorite = false
+      ..lastUsedAt = null
+      ..durationEstimateSeconds = duration
+      ..isSharedBothModes = false
+      ..modeFilter = modeFilter
+      ..shortDescription = shortDesc
+      ..fullInstructions = fullInstr
+      ..modeSpecificNote = modeNote
+      ..seededAt = DateTime.now().toUtc();
   }
 }

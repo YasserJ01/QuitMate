@@ -6,12 +6,19 @@ import '../providers/journal_provider.dart';
 import 'journal_entry_screen.dart';
 
 /// Scrollable list of journal entries with mood filter and tap-to-edit.
-class JournalListScreen extends ConsumerWidget {
+class JournalListScreen extends ConsumerStatefulWidget {
   const JournalListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final entriesAsync = ref.watch(journalEntriesProvider(null));
+  ConsumerState<JournalListScreen> createState() => _JournalListScreenState();
+}
+
+class _JournalListScreenState extends ConsumerState<JournalListScreen> {
+  String? _selectedMoodFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final entriesAsync = ref.watch(journalEntriesProvider(_selectedMoodFilter));
 
     return Scaffold(
       appBar: AppBar(
@@ -31,51 +38,100 @@ class JournalListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: entriesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (entries) {
-          if (entries.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: Column(
+        children: [
+          // Mood filter row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
                 children: [
-                  Icon(Icons.book, size: 80, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text('No journal entries yet'),
-                  const SizedBox(height: 8),
-                  const Text('Start writing to track your journey'),
+                  FilterChip(
+                    label: const Text('All'),
+                    selected: _selectedMoodFilter == null,
+                    onSelected: (_) =>
+                        setState(() => _selectedMoodFilter = null),
+                    selectedColor:
+                        AppTheme.primaryColor.withValues(alpha: 0.15),
+                  ),
+                  const SizedBox(width: 8),
+                  ...MoodTag.values.map((tag) {
+                    final selected = _selectedMoodFilter == tag.name;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text('${tag.emoji} ${tag.label}'),
+                        selected: selected,
+                        onSelected: (_) {
+                          setState(() {
+                            _selectedMoodFilter =
+                                selected ? null : tag.name;
+                          });
+                        },
+                        selectedColor: AppTheme.primaryColor
+                            .withValues(alpha: 0.15),
+                      ),
+                    );
+                  }),
                 ],
               ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: entries.length,
-            itemBuilder: (context, index) {
-              final entry = entries[index];
-              return _JournalCard(
-                entry: entry,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => JournalEntryScreen(
-                        sourceExerciseId: entry.id,
-                      ),
+            ),
+          ),
+          // Entry list
+          Expanded(
+            child: entriesAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (entries) {
+                if (entries.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.book,
+                            size: 80, color: Colors.grey.shade400),
+                        const SizedBox(height: 16),
+                        const Text('No journal entries yet'),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Start writing to track your journey'),
+                      ],
                     ),
                   );
-                },
-                onDelete: () {
-                  ref
-                      .read(journalNotifierProvider.notifier)
-                      .deleteEntry(entry.id);
-                },
-              );
-            },
-          );
-        },
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _JournalCard(
+                      entry: entry,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JournalEntryScreen(
+                              existingEntry: entry,
+                            ),
+                          ),
+                        );
+                      },
+                      onDelete: () {
+                        ref
+                            .read(journalNotifierProvider.notifier)
+                            .deleteEntry(entry.id);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -129,7 +185,8 @@ class _JournalCard extends StatelessWidget {
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text('Delete',
-                            style: TextStyle(color: AppTheme.errorColor)),
+                            style:
+                                TextStyle(color: AppTheme.errorColor)),
                       ),
                     ],
                   ),
@@ -145,10 +202,11 @@ class _JournalCard extends StatelessWidget {
               if (entry.sourceExerciseName != null) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    color:
+                        AppTheme.primaryColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

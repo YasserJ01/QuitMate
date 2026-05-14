@@ -6,14 +6,19 @@ import '../../domain/entities/journal_entry.dart';
 import '../providers/journal_provider.dart';
 
 /// Full-screen journal entry editor with mood tags and auto-save.
+///
+/// Supports both create and edit modes. In edit mode, pass [existingEntry]
+/// to pre-populate the form.
 class JournalEntryScreen extends ConsumerStatefulWidget {
   final String? sourceExerciseId;
   final String? sourceExerciseName;
+  final JournalEntry? existingEntry;
 
   const JournalEntryScreen({
     super.key,
     this.sourceExerciseId,
     this.sourceExerciseName,
+    this.existingEntry,
   });
 
   @override
@@ -26,9 +31,17 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   Timer? _autoSaveTimer;
   bool _hasSaved = false;
 
+  bool get _isEditMode => widget.existingEntry != null;
+
   @override
   void initState() {
     super.initState();
+    // Pre-populate in edit mode
+    if (_isEditMode) {
+      _contentController.text = widget.existingEntry!.content;
+      _selectedMood = widget.existingEntry!.moodTag;
+      _hasSaved = false;
+    }
     _startAutoSave();
   }
 
@@ -50,12 +63,20 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   Future<void> _save() async {
     if (_contentController.text.trim().isEmpty) return;
     try {
-      await ref.read(journalNotifierProvider.notifier).createEntry(
-            content: _contentController.text.trim(),
-            moodTag: _selectedMood,
-            sourceExerciseId: widget.sourceExerciseId,
-            sourceExerciseName: widget.sourceExerciseName,
-          );
+      if (_isEditMode) {
+        await ref.read(journalNotifierProvider.notifier).updateEntry(
+              widget.existingEntry!.id,
+              _contentController.text.trim(),
+              _selectedMood,
+            );
+      } else {
+        await ref.read(journalNotifierProvider.notifier).createEntry(
+              content: _contentController.text.trim(),
+              moodTag: _selectedMood,
+              sourceExerciseId: widget.sourceExerciseId,
+              sourceExerciseName: widget.sourceExerciseName,
+            );
+      }
       _hasSaved = true;
     } catch (_) {}
   }
@@ -64,7 +85,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Journal'),
+        title: Text(_isEditMode ? 'Edit Journal' : 'Journal'),
         actions: [
           TextButton(
             onPressed: () async {
@@ -97,7 +118,8 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                       _selectedMood = selected ? null : tag.name;
                     });
                   },
-                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.15),
+                  selectedColor:
+                      AppTheme.primaryColor.withValues(alpha: 0.15),
                 );
               }).toList(),
             ),

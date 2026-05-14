@@ -447,15 +447,8 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
         .read(cbtSessionProvider(widget.technique).notifier)
         .complete(wasHelpful, rating);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thank you for your feedback!'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
-      Navigator.pop(context);
-    }
+    // Completion screen renders automatically via state.isCompleted
+    // No Navigator.pop here — user taps "Return to Toolkit" to leave
   }
 
   Future<bool?> _showExitConfirmation() {
