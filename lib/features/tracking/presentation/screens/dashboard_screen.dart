@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quitmate/features/interventions/presentation/screens/notifications_settings_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../achievements/presentation/providers/achievement_provider.dart';
+import '../../../achievements/presentation/screens/badge_gallery_screen.dart';
+import '../../../achievements/presentation/widgets/achievement_unlock_overlay.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
 import '../../../relapse_prevention/presentation/screens/relapse_plan_screen.dart';
 import '../../../relapse_prevention/presentation/widgets/panic_button.dart';
@@ -31,6 +34,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(statisticsProvider.notifier).refresh();
       _checkMilestones();
+      _evaluateAchievements();
+    });
+  }
+
+  void _evaluateAchievements() {
+    ref.read(achievementNotifierProvider.notifier).evaluate().catchError((e) {
+      debugPrint('_evaluateAchievements failed: $e');
     });
   }
 
@@ -87,35 +97,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () =>
                 _push(context, const NotificationSettingsScreen()),
           ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events),
+            tooltip: 'Achievements',
+            onPressed: () =>
+                _push(context, const BadgeGalleryScreen()),
+          ),
         ],
       ),
-      body: userIdAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (userId) {
-          if (userId == null) {
-            return const Center(child: Text('Please complete onboarding'));
-          }
+      body: Stack(
+        children: [
+          userIdAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error: $e')),
+            data: (userId) {
+              if (userId == null) {
+                return const Center(
+                    child: Text('Please complete onboarding'));
+              }
 
-          if (statsState.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              if (statsState.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          if (statsState.error != null) {
-            return _ErrorBody(
-              message: statsState.error!,
-              onRetry: () =>
-                  ref.read(statisticsProvider.notifier).refresh(),
-            );
-          }
+              if (statsState.error != null) {
+                return _ErrorBody(
+                  message: statsState.error!,
+                  onRetry: () =>
+                      ref.read(statisticsProvider.notifier).refresh(),
+                );
+              }
 
-          // Load profile and use mode factory
-          return RefreshIndicator(
-            onRefresh: () async =>
-                ref.read(statisticsProvider.notifier).refresh(),
-            child: _ModeAwareBody(userId: userId),
-          );
-        },
+              // Load profile and use mode factory
+              return RefreshIndicator(
+                onRefresh: () async =>
+                    ref.read(statisticsProvider.notifier).refresh(),
+                child: _ModeAwareBody(userId: userId),
+              );
+            },
+          ),
+          // Achievement unlock overlay listener
+          _AchievementOverlayListener(),
+        ],
       ),
       floatingActionButton: _Fabs(
         onCravingLogged: () => _onCravingLogged(),
@@ -144,6 +167,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _onLogSuccess() {
     ref.read(statisticsProvider.notifier).refresh();
     ref.invalidate(todaysLogsProvider);
+    _evaluateAchievements();
   }
 
   void _push(BuildContext context, Widget screen) {
@@ -204,6 +228,25 @@ class _Fabs extends StatelessWidget {
         const PanicButton(),
       ],
     );
+  }
+}
+
+// ─── Achievement unlock overlay listener ──────────────────────────────────
+
+class _AchievementOverlayListener extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(pendingUnlockAnimationsProvider, (prev, next) {
+      if (next.isNotEmpty) {
+        final achievement = ref
+            .read(pendingUnlockAnimationsProvider.notifier)
+            .dequeue();
+        if (achievement != null) {
+          AchievementUnlockOverlay.enqueue(context, achievement);
+        }
+      }
+    });
+    return const SizedBox.shrink();
   }
 }
 

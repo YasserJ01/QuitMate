@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/services/database/isar_service.dart';
 import 'core/services/storage/secure_storage_service.dart';
+import 'features/achievements/data/datasources/achievement_seed_service.dart';
+import 'features/achievements/data/repositories/achievement_repository_impl.dart';
 import 'features/interventions/presentation/providers/notification_provider.dart';
 import 'features/interventions/services/push_notification_service.dart';
+import 'features/onboarding/data/models/user_profile.dart';
 import 'features/onboarding/presentation/screens/welcome_screen.dart';
 import 'features/tracking/presentation/screens/dashboard_screen.dart';
 import 'features/craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
@@ -31,18 +36,18 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
     // 1. Check onboarding status first — fast secure-storage read
     final hasCompleted = await _secureStorage.hasCompletedOnboarding();
 
+    // 2. If onboarded, seed data BEFORE rendering the dashboard so
+    //    first evaluation already has seeded definitions available.
+    if (hasCompleted) {
+      await _initNotifications();
+      await _seedAchievements();
+    }
+
     if (mounted) {
       setState(() {
         _hasCompletedOnboarding = hasCompleted;
         _isLoading = false;
       });
-    }
-
-    // 2. If onboarded, warm up the NotificationManager and schedule
-    //    notifications for the next 7 days (idempotent — safe to call
-    //    every cold start).
-    if (hasCompleted) {
-      await _initNotifications();
     }
   }
 
@@ -68,6 +73,29 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
     } catch (e) {
       // Non-fatal — the app works without notifications
       debugPrint('Notification bootstrap error: $e');
+    }
+  }
+
+  Future<void> _seedAchievements() async {
+    try {
+      final userId = await _secureStorage.getUserId();
+      if (userId == null) return;
+
+      final isar = await IsarService.instance;
+      final profile = await isar.userProfiles
+          .filter()
+          .userIdEqualTo(userId)
+          .findFirst();
+      if (profile == null) return;
+
+      final mode = profile.goalType.name;
+
+      await AchievementSeedService(
+        AchievementRepositoryImpl(),
+      ).seedIfNeeded(userId: userId, mode: mode);
+    } catch (e) {
+      // Non-fatal — the app works without achievements
+      debugPrint('Achievement seed error: $e');
     }
   }
 

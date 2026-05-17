@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:quitmate/features/achievements/data/models/achievement_model.dart';
 import 'package:quitmate/features/craving_toolkit/data/models/toolkit_exercise_model.dart';
 import '../../../features/craving_toolkit/data/models/toolkit_models.dart';
 import '../../../features/craving_toolkit/data/models/toolkit_session_model.dart';
@@ -23,6 +24,9 @@ class IsarService {
       [
         // ── Onboarding ──────────────────────────────────────────────────
         UserProfileSchema,
+
+        // ── Achievements ────────────────────────────────────────────────
+        AchievementModelSchema,
 
         // ── Tracking ────────────────────────────────────────────────────
         LogEntrySchema,
