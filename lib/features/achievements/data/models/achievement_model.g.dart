@@ -79,27 +79,19 @@ const AchievementModelSchema = CollectionSchema(
   deserializeProp: _achievementModelDeserializeProp,
   idName: r'id',
   indexes: {
-    r'achievementId': IndexSchema(
-      id: 547487615361511857,
-      name: r'achievementId',
+    r'userId_achievementId': IndexSchema(
+      id: -8132669924074516036,
+      name: r'userId_achievementId',
       unique: true,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'achievementId',
+          name: r'userId',
           type: IndexType.hash,
           caseSensitive: true,
-        )
-      ],
-    ),
-    r'userId': IndexSchema(
-      id: -2005826577402374815,
-      name: r'userId',
-      unique: false,
-      replace: false,
-      properties: [
+        ),
         IndexPropertySchema(
-          name: r'userId',
+          name: r'achievementId',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -224,59 +216,95 @@ void _achievementModelAttach(
 }
 
 extension AchievementModelByIndex on IsarCollection<AchievementModel> {
-  Future<AchievementModel?> getByAchievementId(String achievementId) {
-    return getByIndex(r'achievementId', [achievementId]);
+  Future<AchievementModel?> getByUserIdAchievementId(
+      String userId, String achievementId) {
+    return getByIndex(r'userId_achievementId', [userId, achievementId]);
   }
 
-  AchievementModel? getByAchievementIdSync(String achievementId) {
-    return getByIndexSync(r'achievementId', [achievementId]);
+  AchievementModel? getByUserIdAchievementIdSync(
+      String userId, String achievementId) {
+    return getByIndexSync(r'userId_achievementId', [userId, achievementId]);
   }
 
-  Future<bool> deleteByAchievementId(String achievementId) {
-    return deleteByIndex(r'achievementId', [achievementId]);
+  Future<bool> deleteByUserIdAchievementId(
+      String userId, String achievementId) {
+    return deleteByIndex(r'userId_achievementId', [userId, achievementId]);
   }
 
-  bool deleteByAchievementIdSync(String achievementId) {
-    return deleteByIndexSync(r'achievementId', [achievementId]);
+  bool deleteByUserIdAchievementIdSync(String userId, String achievementId) {
+    return deleteByIndexSync(r'userId_achievementId', [userId, achievementId]);
   }
 
-  Future<List<AchievementModel?>> getAllByAchievementId(
-      List<String> achievementIdValues) {
-    final values = achievementIdValues.map((e) => [e]).toList();
-    return getAllByIndex(r'achievementId', values);
+  Future<List<AchievementModel?>> getAllByUserIdAchievementId(
+      List<String> userIdValues, List<String> achievementIdValues) {
+    final len = userIdValues.length;
+    assert(achievementIdValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([userIdValues[i], achievementIdValues[i]]);
+    }
+
+    return getAllByIndex(r'userId_achievementId', values);
   }
 
-  List<AchievementModel?> getAllByAchievementIdSync(
-      List<String> achievementIdValues) {
-    final values = achievementIdValues.map((e) => [e]).toList();
-    return getAllByIndexSync(r'achievementId', values);
+  List<AchievementModel?> getAllByUserIdAchievementIdSync(
+      List<String> userIdValues, List<String> achievementIdValues) {
+    final len = userIdValues.length;
+    assert(achievementIdValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([userIdValues[i], achievementIdValues[i]]);
+    }
+
+    return getAllByIndexSync(r'userId_achievementId', values);
   }
 
-  Future<int> deleteAllByAchievementId(List<String> achievementIdValues) {
-    final values = achievementIdValues.map((e) => [e]).toList();
-    return deleteAllByIndex(r'achievementId', values);
+  Future<int> deleteAllByUserIdAchievementId(
+      List<String> userIdValues, List<String> achievementIdValues) {
+    final len = userIdValues.length;
+    assert(achievementIdValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([userIdValues[i], achievementIdValues[i]]);
+    }
+
+    return deleteAllByIndex(r'userId_achievementId', values);
   }
 
-  int deleteAllByAchievementIdSync(List<String> achievementIdValues) {
-    final values = achievementIdValues.map((e) => [e]).toList();
-    return deleteAllByIndexSync(r'achievementId', values);
+  int deleteAllByUserIdAchievementIdSync(
+      List<String> userIdValues, List<String> achievementIdValues) {
+    final len = userIdValues.length;
+    assert(achievementIdValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([userIdValues[i], achievementIdValues[i]]);
+    }
+
+    return deleteAllByIndexSync(r'userId_achievementId', values);
   }
 
-  Future<Id> putByAchievementId(AchievementModel object) {
-    return putByIndex(r'achievementId', object);
+  Future<Id> putByUserIdAchievementId(AchievementModel object) {
+    return putByIndex(r'userId_achievementId', object);
   }
 
-  Id putByAchievementIdSync(AchievementModel object, {bool saveLinks = true}) {
-    return putByIndexSync(r'achievementId', object, saveLinks: saveLinks);
-  }
-
-  Future<List<Id>> putAllByAchievementId(List<AchievementModel> objects) {
-    return putAllByIndex(r'achievementId', objects);
-  }
-
-  List<Id> putAllByAchievementIdSync(List<AchievementModel> objects,
+  Id putByUserIdAchievementIdSync(AchievementModel object,
       {bool saveLinks = true}) {
-    return putAllByIndexSync(r'achievementId', objects, saveLinks: saveLinks);
+    return putByIndexSync(r'userId_achievementId', object,
+        saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByUserIdAchievementId(List<AchievementModel> objects) {
+    return putAllByIndex(r'userId_achievementId', objects);
+  }
+
+  List<Id> putAllByUserIdAchievementIdSync(List<AchievementModel> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'userId_achievementId', objects,
+        saveLinks: saveLinks);
   }
 }
 
@@ -359,44 +387,44 @@ extension AchievementModelQueryWhere
   }
 
   QueryBuilder<AchievementModel, AchievementModel, QAfterWhereClause>
-      achievementIdEqualTo(String achievementId) {
+      userIdEqualToAnyAchievementId(String userId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'achievementId',
-        value: [achievementId],
+        indexName: r'userId_achievementId',
+        value: [userId],
       ));
     });
   }
 
   QueryBuilder<AchievementModel, AchievementModel, QAfterWhereClause>
-      achievementIdNotEqualTo(String achievementId) {
+      userIdNotEqualToAnyAchievementId(String userId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'achievementId',
+              indexName: r'userId_achievementId',
               lower: [],
-              upper: [achievementId],
+              upper: [userId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'achievementId',
-              lower: [achievementId],
+              indexName: r'userId_achievementId',
+              lower: [userId],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'achievementId',
-              lower: [achievementId],
+              indexName: r'userId_achievementId',
+              lower: [userId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'achievementId',
+              indexName: r'userId_achievementId',
               lower: [],
-              upper: [achievementId],
+              upper: [userId],
               includeUpper: false,
             ));
       }
@@ -404,44 +432,45 @@ extension AchievementModelQueryWhere
   }
 
   QueryBuilder<AchievementModel, AchievementModel, QAfterWhereClause>
-      userIdEqualTo(String userId) {
+      userIdAchievementIdEqualTo(String userId, String achievementId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'userId',
-        value: [userId],
+        indexName: r'userId_achievementId',
+        value: [userId, achievementId],
       ));
     });
   }
 
   QueryBuilder<AchievementModel, AchievementModel, QAfterWhereClause>
-      userIdNotEqualTo(String userId) {
+      userIdEqualToAchievementIdNotEqualTo(
+          String userId, String achievementId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'userId',
-              lower: [],
-              upper: [userId],
+              indexName: r'userId_achievementId',
+              lower: [userId],
+              upper: [userId, achievementId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'userId',
-              lower: [userId],
+              indexName: r'userId_achievementId',
+              lower: [userId, achievementId],
               includeLower: false,
-              upper: [],
+              upper: [userId],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'userId',
-              lower: [userId],
+              indexName: r'userId_achievementId',
+              lower: [userId, achievementId],
               includeLower: false,
-              upper: [],
+              upper: [userId],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'userId',
-              lower: [],
-              upper: [userId],
+              indexName: r'userId_achievementId',
+              lower: [userId],
+              upper: [userId, achievementId],
               includeUpper: false,
             ));
       }

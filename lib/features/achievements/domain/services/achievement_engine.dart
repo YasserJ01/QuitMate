@@ -79,11 +79,13 @@ class AchievementEngine {
       'urge-resisted-1' => _countEventType(logs, 'cravingDelayed', 1),
       'urge-resisted-25' => _countEventType(logs, 'cravingDelayed', 25),
 
-      // ── Smoking money milestones ──────────────────────────────────────
-      'smoke-money-10' =>
-          (stats.moneySaved.toInt()).clamp(0, 10),
-      'smoke-money-100' =>
-          (stats.moneySaved.toInt()).clamp(0, 100),
+      // ── Smoking money milestones (B-08: guarded — don't force 0 if no data) ──
+      'smoke-money-10' => stats.hasMoneySavingsData
+          ? (stats.moneySaved.toInt()).clamp(0, 10)
+          : achievement.progressValue,
+      'smoke-money-100' => stats.hasMoneySavingsData
+          ? (stats.moneySaved.toInt()).clamp(0, 100)
+          : achievement.progressValue,
 
       // Unknown ID — no change
       _ => achievement.progressValue,
@@ -113,10 +115,12 @@ class Statistics {
   final int currentStreak;
   final int recoveryCount;
   final double moneySaved;
+  final bool hasMoneySavingsData;
 
   const Statistics({
     this.currentStreak = 0,
     this.recoveryCount = 0,
     this.moneySaved = 0,
+    this.hasMoneySavingsData = false,
   });
 }

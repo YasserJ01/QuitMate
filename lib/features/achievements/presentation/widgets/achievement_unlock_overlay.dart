@@ -7,8 +7,17 @@ import '../../domain/entities/achievement.dart';
 /// Auto-dismisses after 2.5 seconds. Tappable to dismiss early.
 /// Queues multiple unlocks with 500ms delay between them.
 class AchievementUnlockOverlay {
+  AchievementUnlockOverlay._();
+
   static final _queue = <Achievement>[];
   static bool _isShowing = false;
+
+  /// Reset should be called when the app is brought back to foreground
+  /// or when the root navigator context changes.
+  static void reset() {
+    _queue.clear();
+    _isShowing = false;
+  }
 
   static void enqueue(BuildContext context, Achievement achievement) {
     _queue.add(achievement);
@@ -20,6 +29,14 @@ class AchievementUnlockOverlay {
       _isShowing = false;
       return;
     }
+
+    // Guard: context must still be valid
+    if (!context.mounted) {
+      _queue.clear();
+      _isShowing = false;
+      return;
+    }
+
     _isShowing = true;
     final achievement = _queue.removeAt(0);
 
@@ -36,7 +53,14 @@ class AchievementUnlockOverlay {
         },
       ),
     );
-    Overlay.of(context).insert(entry);
+
+    // Additional guard before inserting — use maybeOf to avoid crash
+    final overlayState = Overlay.maybeOf(context);
+    if (overlayState == null) {
+      _isShowing = false;
+      return;
+    }
+    overlayState.insert(entry);
   }
 }
 

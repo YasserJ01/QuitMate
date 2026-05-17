@@ -5,9 +5,11 @@ import '../../domain/services/achievement_engine.dart';
 import '../../domain/repositories/i_achievement_repository.dart';
 import '../../data/repositories/achievement_repository_impl.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
-import '../../../tracking/data/models/statistics.dart' as tracking_stats;
-import '../../../tracking/presentation/providers/statistics_provider.dart';
+import '../../../tracking/data/models/statistics.dart' as raw_stats;
+import '../../../tracking/services/statistics_calculator.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
+import '../../../interventions/presentation/providers/notification_provider.dart';
+import '../../../interventions/data/models/notification_models.dart';
 
 // ─── Repository provider ──────────────────────────────────────────────────
 
@@ -59,11 +61,13 @@ class _UnlockQueueNotifier extends StateNotifier<List<Achievement>> {
 }
 
 // ─── Achievement notifier — evaluates and persists ─────────────────────────
+// NOT autoDispose — this is a long-lived service that must survive
+// navigation away while evaluation is in-flight (B-04 fix).
 
-final achievementNotifierProvider = AsyncNotifierProvider.autoDispose<
+final achievementNotifierProvider = AsyncNotifierProvider<
     AchievementNotifier, List<Achievement>>(AchievementNotifier.new);
 
-class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
+class AchievementNotifier extends AsyncNotifier<List<Achievement>> {
   @override
   Future<List<Achievement>> build() async {
     final userId = await ref.watch(currentUserIdProvider.future);
@@ -72,23 +76,25 @@ class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
     return repo.getAchievements(userId);
   }
 
-  /// Evaluate all achievements against current statistics and log history.
-  /// Persists updates and enqueues unlock animations for newly earned badges.
+  /// Evaluate all achievements against CURRENT (freshly computed) statistics
+  /// and log history. Persists updates, sends push notifications, and
+  /// enqueues in-app unlock animations.
   ///
-  /// Reads achievements directly from the repository (does NOT depend on
-  /// [state] because `build()` may not have completed when this is first
-  /// called). Self-healing: seeds definitions if none exist yet.
+  /// Self-contained: computes its own statistics from repositories rather
+  /// than relying on the possibly-stale [statisticsProvider] snapshot (B-01,
+  /// B-06 fixes). Self-healing: seeds definitions if none exist yet.
   Future<void> evaluate() async {
     try {
       final userId = await ref.read(currentUserIdProvider.future);
       if (userId == null) return;
 
       final achievementsRepo = ref.read(achievementRepositoryProvider);
+      final trackingRepo = ref.read(trackingRepositoryProvider);
+      final profileRepo = ref.read(profileRepositoryProvider);
 
       // ── Guard: seed achievements if not yet seeded (race with bootstrap) ──
-      final count = await achievementsRepo.getAchievementCount(userId);
+      int count = await achievementsRepo.getAchievementCount(userId);
       if (count == 0) {
-        final profileRepo = ref.read(profileRepositoryProvider);
         final profile = await profileRepo.getProfile(userId);
         if (profile != null) {
           await achievementsRepo.seedAchievements(
@@ -101,16 +107,22 @@ class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
       final current = await achievementsRepo.getAchievements(userId);
       if (current.isEmpty) return;
 
-      // ── Gather inputs ────────────────────────────────────────────────
-      final statsState = ref.read(statisticsProvider);
-      final stats = statsState.statistics;
-
-      final profileRepo = ref.read(profileRepositoryProvider);
+      // ── Profile & mode ───────────────────────────────────────────────
       final profile = await profileRepo.getProfile(userId);
-      final mode = profile?.goalType.name ?? 'quitSmoking';
+      if (profile == null) return;
+      final mode = profile.goalType.name;
 
-      final trackingRepo = ref.read(trackingRepositoryProvider);
+      // ── Compute fresh statistics (B-01, B-06 fix) ────────────────────
       final allLogs = await trackingRepo.getLogEntries(userId);
+      final allCravings = await trackingRepo.getCravingEntries(userId);
+
+      final freshStats = StatisticsCalculator.calculateStatistics(
+        logs: allLogs,
+        cravings: allCravings,
+        profile: profile,
+      );
+
+      // ── Build log summaries (B-09 fix: include CravingEntry outcomes) ─
       final logSummaries = allLogs
           .map((l) => LogEntrySummary(
                 typeName: l.type.name,
@@ -118,12 +130,22 @@ class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
               ))
           .toList();
 
+      final resistedSummaries = allCravings
+          .where((c) => c.wasSuccessfullyResisted)
+          .map((c) => LogEntrySummary(
+                typeName: 'cravingDelayed',
+                timestamp: c.startTime,
+              ))
+          .toList();
+
+      final combinedSummaries = [...logSummaries, ...resistedSummaries];
+
       // ── Evaluate ─────────────────────────────────────────────────────
       final engine = AchievementEngine();
       final updates = engine.evaluate(
         existing: current,
-        stats: _mapStatistics(stats),
-        recentLogs: logSummaries,
+        stats: _mapStatistics(freshStats, profile),
+        recentLogs: combinedSummaries,
         mode: mode,
       );
 
@@ -132,14 +154,31 @@ class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
       // ── Persist ──────────────────────────────────────────────────────
       await achievementsRepo.applyUpdates(userId, updates);
 
-      // ── Enqueue unlock animations ────────────────────────────────────
+      // ── Enqueue in-app unlock animations ─────────────────────────────
       final justUnlocked = updates
           .where((u) => u.justUnlocked)
           .map((u) => current.firstWhere((a) => a.id == u.achievementId))
           .toList();
 
       if (justUnlocked.isNotEmpty) {
-        ref.read(pendingUnlockAnimationsProvider.notifier).enqueue(justUnlocked);
+        ref
+            .read(pendingUnlockAnimationsProvider.notifier)
+            .enqueue(justUnlocked);
+
+        // B-02 fix: Push notification for each unlocked achievement
+        final managerAsync = ref.read(notificationManagerProvider);
+        final manager = managerAsync.valueOrNull;
+        if (manager != null) {
+          for (final achievement in justUnlocked) {
+            await manager.sendImmediate(
+              userId: userId,
+              title: '${achievement.iconEmoji} Achievement Unlocked!',
+              body: '${achievement.name} — ${achievement.description}',
+              type: NotificationType.milestone,
+              payload: 'type=achievement&id=${achievement.id}',
+            );
+          }
+        }
       }
 
       ref.invalidateSelf();
@@ -157,12 +196,15 @@ class AchievementNotifier extends AutoDisposeAsyncNotifier<List<Achievement>> {
   // ── Map the app's Statistics to the engine's lightweight Statistics ──────
 
   static EngineStatistics _mapStatistics(
-    tracking_stats.Statistics s,
+    raw_stats.Statistics s,
+    /* UserProfile profile, */
+    _, // unused; kept for signature compatibility
   ) {
     return EngineStatistics(
       currentStreak: s.currentStreak,
       recoveryCount: s.recoveryCount,
       moneySaved: s.moneySaved,
+      hasMoneySavingsData: s.moneySaved > 0 || s.potentialMoneySaved > 0,
     );
   }
 }
