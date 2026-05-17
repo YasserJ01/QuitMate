@@ -7,6 +7,7 @@ import 'core/services/database/isar_service.dart';
 import 'core/services/storage/secure_storage_service.dart';
 import 'features/achievements/data/datasources/achievement_seed_service.dart';
 import 'features/achievements/data/repositories/achievement_repository_impl.dart';
+import 'features/achievements/presentation/screens/badge_gallery_screen.dart';
 import 'features/interventions/presentation/providers/notification_provider.dart';
 import 'features/interventions/services/push_notification_service.dart';
 import 'features/onboarding/data/models/user_profile.dart';
@@ -124,6 +125,10 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
         type == 'preventive') {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const CravingToolkitScreen()),
+      );
+    } else if (type == 'achievement') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const BadgeGalleryScreen()),
       );
     }
     // Additional routes can be added here as the app grows.

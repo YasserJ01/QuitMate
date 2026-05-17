@@ -34,7 +34,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(statisticsProvider.notifier).refresh();
       _checkMilestones();
-      _evaluateAchievements();
+      // NOTE: _evaluateAchievements() is now called via ref.listen() below
+      // so it fires AFTER statistics finish loading (B-01 fix).
     });
   }
 
@@ -64,6 +65,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // B-01 fix: listen to statistics state — evaluate achievements whenever
+    // fresh stats arrive (after any log event or manual refresh).
+    ref.listen<StatisticsState>(statisticsProvider, (previous, next) {
+      if (!next.isLoading && next.error == null && next.statistics.currentStreak > 0) {
+        _evaluateAchievements();
+      }
+    });
+
     final statsState = ref.watch(statisticsProvider);
     final userIdAsync = ref.watch(currentUserIdProvider);
 
@@ -237,7 +246,7 @@ class _AchievementOverlayListener extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(pendingUnlockAnimationsProvider, (prev, next) {
-      if (next.isNotEmpty) {
+      if (next.isNotEmpty && context.mounted) {
         final achievement = ref
             .read(pendingUnlockAnimationsProvider.notifier)
             .dequeue();

@@ -75,6 +75,16 @@ class AchievementBadgeCard extends StatelessWidget {
                   '${achievement.progressValue} / ${achievement.progressMax}',
                   style: theme.textTheme.bodySmall,
                 ),
+                if (achievement.id.contains('money') &&
+                    achievement.progressValue == 0)
+                  Text(
+                    'Add cigarette cost in your profile to track this',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.orange.shade700,
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
               ],
             ],
             if (achievement.isUnlocked &&

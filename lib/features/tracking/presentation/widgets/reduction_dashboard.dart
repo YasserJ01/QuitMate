@@ -8,6 +8,8 @@ import '../../../onboarding/domain/services/profile_completeness_service.dart';
 import '../../../onboarding/presentation/providers/profile_completeness_provider.dart';
 import '../../../onboarding/presentation/screens/edit_profile_screen.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
+import '../../../achievements/presentation/widgets/achievements_preview_card.dart';
+import '../../../achievements/presentation/widgets/next_achievement_card.dart';
 import '../../data/models/statistics.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/streak_card.dart';
@@ -151,6 +153,11 @@ class ReductionDashboard extends ConsumerWidget {
         if (completeness.hasDistressBaseline &&
             stats.distressTrend.length >= 3)
           _DistressTrendCard(trend: stats.distressTrend),
+        const SizedBox(height: 16),
+
+        // ── Achievements ───────────────────────────────────────────────
+        const AchievementsPreviewCard(),
+        const NextAchievementCard(),
         const SizedBox(height: 16),
 
         // Quick Actions Row

@@ -6,7 +6,9 @@ part 'achievement_model.g.dart';
 class AchievementModel {
   Id id = Isar.autoIncrement;
 
-  @Index(unique: true)
+  @Index(composite: [CompositeIndex('achievementId')], unique: true)
+  late String userId; // owner of this achievement record
+
   late String achievementId; // stable string ID from achievement catalogue
 
   late String name;
@@ -18,7 +20,4 @@ class AchievementModel {
   late int progressMax;
   late bool isUnlocked;
   DateTime? unlockedAt; // UTC
-
-  @Index()
-  late String userId; // owner of this achievement record
 }
