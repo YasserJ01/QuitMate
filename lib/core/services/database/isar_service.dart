@@ -11,6 +11,7 @@ import '../../../features/relapse_prevention/data/models/relapse_models.dart';
 import '../../../features/relapse_prevention/data/models/lapse_recovery_session_model.dart';
 import '../../../features/tracking/data/models/craving_entry.dart';
 import '../../../features/tracking/data/models/log_entry.dart';
+import '../../../features/tracking/data/models/weekly_review_model.dart';
 
 class IsarService {
   static Isar? _isar;
@@ -31,6 +32,7 @@ class IsarService {
         // ── Tracking ────────────────────────────────────────────────────
         LogEntrySchema,
         CravingEntrySchema,
+        WeeklyReviewModelSchema,
 
         // ── Craving toolkit ─────────────────────────────────────────────
         BreathingSessionSchema,

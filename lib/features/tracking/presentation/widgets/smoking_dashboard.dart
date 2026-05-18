@@ -11,7 +11,12 @@ import '../../../achievements/presentation/widgets/achievements_preview_card.dar
 import '../../../achievements/presentation/widgets/next_achievement_card.dart';
 import '../../../achievements/presentation/widgets/reasons_wall_card.dart';
 import '../../data/models/statistics.dart';
+import '../../data/models/log_entry.dart';
+import '../widgets/daily_checkin_banner.dart';
+import '../widgets/consistency_score_card.dart';
+import '../widgets/recovery_stats_card.dart';
 import '../providers/statistics_provider.dart';
+import '../providers/tracking_provider.dart';
 import '../widgets/streak_card.dart';
 import '../widgets/stats_summary_card.dart';
 import '../widgets/savings_card.dart';
@@ -29,22 +34,49 @@ class SmokingDashboard extends ConsumerWidget {
     final statsState = ref.watch(statisticsProvider);
     final stats = statsState.statistics;
     final completenessAsync = ref.watch(profileCompletenessProvider);
+    final logsAsync = ref.watch(logsProvider);
 
     return completenessAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => _buildContent(context, stats, ProfileCompleteness.empty()),
-      data: (completeness) => _buildContent(context, stats, completeness),
+      error: (e, _) => _buildContent(context, ref, stats, ProfileCompleteness.empty(), logsAsync),
+      data: (completeness) => _buildContent(context, ref, stats, completeness, logsAsync),
     );
   }
 
   Widget _buildContent(
     BuildContext context,
+    WidgetRef ref,
     Statistics stats,
     ProfileCompleteness completeness,
+    AsyncValue<List<LogEntry>> logsAsync,
   ) {
+
+    // Compute consistency from real check-in logs
+    int checkinDays = 0;
+    int totalDays = 0;
+    logsAsync.whenData((logs) {
+      final checkinDates = <DateTime>{};
+      for (final log in logs) {
+        if (log.type == LogType.dailyCheckin) {
+          final local = log.timestamp.toLocal();
+          checkinDates.add(DateTime(local.year, local.month, local.day));
+        }
+      }
+      checkinDays = checkinDates.length;
+    });
+    if (profile.quitDate != null) {
+      final start = DateTime(
+          profile.quitDate!.year, profile.quitDate!.month, profile.quitDate!.day);
+      totalDays = DateTime.now().difference(start).inDays + 1;
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Daily check-in banner
+        const DailyCheckinBanner(),
+        const SizedBox(height: 8),
+
         // Mode chip
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -117,6 +149,29 @@ class SmokingDashboard extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Consistency — counts actual check-in days from logs
+        if (totalDays > 0) ...[
+          ConsistencyScoreCard(
+            checkinDays: checkinDays,
+            totalDays: totalDays,
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Recovery Journey — only shown after first recovery
+        if (stats.recoveryCount > 0) ...[
+          RecoveryStatsCard(
+            recoveryCount: stats.recoveryCount,
+            topTrigger: stats.triggerFrequency.isNotEmpty
+                ? stats.triggerFrequency.entries
+                    .reduce((a, b) => a.value > b.value ? a : b)
+                    .key
+                : null,
+            longestPostRecoveryStreak: stats.longestStreak,
           ),
           const SizedBox(height: 16),
         ],
