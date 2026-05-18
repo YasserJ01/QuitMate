@@ -19,9 +19,12 @@ class ConsistencyScoreCard extends StatelessWidget {
         : 0.0;
     final percent = (score * 100).toInt();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
+    return Semantics(
+      label:
+          'Consistency: $checkinDays of $totalDays days, $percent percent',
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
@@ -61,6 +64,7 @@ class ConsistencyScoreCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
