@@ -8,6 +8,8 @@ import 'core/services/storage/secure_storage_service.dart';
 import 'features/achievements/data/datasources/achievement_seed_service.dart';
 import 'features/achievements/data/repositories/achievement_repository_impl.dart';
 import 'features/achievements/presentation/screens/badge_gallery_screen.dart';
+import 'features/settings/presentation/providers/settings_provider.dart';
+import 'features/settings/presentation/screens/lock_screen.dart';
 import 'features/interventions/presentation/providers/notification_provider.dart';
 import 'features/interventions/services/push_notification_service.dart';
 import 'features/onboarding/data/models/user_profile.dart';
@@ -138,16 +140,22 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(appThemeModeProvider);
+
     return MaterialApp(
       title: 'QuitMate',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       navigatorKey: _navigatorKey,
-      home: _isLoading
-          ? const _SplashScreen()
-          : _hasCompletedOnboarding
-          ? const DashboardScreen()
-          : const WelcomeScreen(),
+      home: LockScreen(
+        child: _isLoading
+            ? const _SplashScreen()
+            : _hasCompletedOnboarding
+                ? const DashboardScreen()
+                : const WelcomeScreen(),
+      ),
     );
   }
 }

@@ -17,6 +17,7 @@ import '../providers/tracking_provider.dart';
 import '../widgets/smoking_dashboard.dart';
 import '../widgets/reduction_dashboard.dart';
 import '../widgets/quick_log_button.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
 import 'log_history_screen.dart';
 import 'detailed_stats_screen.dart';
 
@@ -111,6 +112,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             tooltip: 'Achievements',
             onPressed: () =>
                 _push(context, const BadgeGalleryScreen()),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () =>
+                _push(context, const SettingsScreen()),
           ),
         ],
       ),
