@@ -8,6 +8,9 @@ import '../widgets/theme_settings_sheet.dart';
 import 'privacy_security_screen.dart';
 import 'about_screen.dart';
 import 'language_settings_screen.dart';
+import 'export_data_screen.dart';
+import 'delete_data_screen.dart';
+import 'reset_profile_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -92,36 +95,24 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.download),
             title: const Text('Export My Data'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Stage 6 — Export Data Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming in next update')),
-              );
-            },
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ExportDataScreen())),
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text('Delete All Data',
                 style: TextStyle(color: Colors.red)),
             trailing: const Icon(Icons.chevron_right, color: Colors.red),
-            onTap: () {
-              // TODO: Stage 6 — Delete Data Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming in next update')),
-              );
-            },
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const DeleteAllDataScreen())),
           ),
           ListTile(
             leading: const Icon(Icons.restart_alt, color: Colors.orange),
             title: const Text('Reset Profile',
                 style: TextStyle(color: Colors.orange)),
             trailing: const Icon(Icons.chevron_right, color: Colors.orange),
-            onTap: () {
-              // TODO: Stage 6 — Reset Profile Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming in next update')),
-              );
-            },
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ResetProfileScreen())),
           ),
 
           const Divider(),
