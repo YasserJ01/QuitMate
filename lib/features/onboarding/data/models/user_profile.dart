@@ -53,6 +53,9 @@ class UserProfile {
   @Enumerated(EnumType.name)
   List<TriggerType> triggers = [];
 
+  // Reasons Wall — personal motivations visible on dashboard (FR-P09)
+  List<String> reasons = [];
+
   // Quit/start date (UTC)
   DateTime? quitDate;
 

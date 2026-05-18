@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../onboarding/data/models/user_profile.dart';
+import '../../../onboarding/domain/entities/goal_type.dart';
 import '../../../onboarding/domain/services/profile_completeness_service.dart';
 import '../../../onboarding/presentation/providers/profile_completeness_provider.dart';
 import '../../../onboarding/presentation/screens/edit_profile_screen.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
 import '../../../achievements/presentation/widgets/achievements_preview_card.dart';
 import '../../../achievements/presentation/widgets/next_achievement_card.dart';
+import '../../../achievements/presentation/widgets/reasons_wall_card.dart';
 import '../../data/models/statistics.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/streak_card.dart';
@@ -69,7 +71,12 @@ class SmokingDashboard extends ConsumerWidget {
         StreakCard(
           statistics: stats,
           quitDate: profile.quitDate,
+          mode: GoalType.quitSmoking,
         ),
+        const SizedBox(height: 16),
+
+        // Reasons Wall
+        const ReasonsWallCard(),
         const SizedBox(height: 16),
 
         // Stats Row

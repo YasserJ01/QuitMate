@@ -138,64 +138,69 @@ const UserProfileSchema = CollectionSchema(
       name: r'quitDate',
       type: IsarType.dateTime,
     ),
-    r'recoveryCount': PropertySchema(
+    r'reasons': PropertySchema(
       id: 24,
+      name: r'reasons',
+      type: IsarType.stringList,
+    ),
+    r'recoveryCount': PropertySchema(
+      id: 25,
       name: r'recoveryCount',
       type: IsarType.long,
     ),
     r'reductionPlanJson': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'reductionPlanJson',
       type: IsarType.string,
     ),
     r'relationshipEffectIndex': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'relationshipEffectIndex',
       type: IsarType.long,
     ),
     r'sleepEffectIndex': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'sleepEffectIndex',
       type: IsarType.long,
     ),
     r'smokingWindows': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'smokingWindows',
       type: IsarType.stringList,
     ),
     r'timeOfDayPatterns': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'timeOfDayPatterns',
       type: IsarType.stringList,
     ),
     r'triggers': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'triggers',
       type: IsarType.stringList,
       enumMap: _UserProfiletriggersEnumValueMap,
     ),
     r'ttfcMinutesIndex': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'ttfcMinutesIndex',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'userId',
       type: IsarType.string,
     ),
     r'values': PropertySchema(
-      id: 34,
+      id: 35,
       name: r'values',
       type: IsarType.stringList,
     ),
     r'yearsSmoking': PropertySchema(
-      id: 35,
+      id: 36,
       name: r'yearsSmoking',
       type: IsarType.long,
     )
@@ -245,6 +250,13 @@ int _userProfileEstimateSize(
   {
     for (var i = 0; i < object.previousAids.length; i++) {
       final value = object.previousAids[i];
+      bytesCount += value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.reasons.length * 3;
+  {
+    for (var i = 0; i < object.reasons.length; i++) {
+      final value = object.reasons[i];
       bytesCount += value.length * 3;
     }
   }
@@ -316,19 +328,20 @@ void _userProfileSerialize(
   writer.writeLong(offsets[21], object.previousQuitAttempts);
   writer.writeLong(offsets[22], object.previousReductionAttempts);
   writer.writeDateTime(offsets[23], object.quitDate);
-  writer.writeLong(offsets[24], object.recoveryCount);
-  writer.writeString(offsets[25], object.reductionPlanJson);
-  writer.writeLong(offsets[26], object.relationshipEffectIndex);
-  writer.writeLong(offsets[27], object.sleepEffectIndex);
-  writer.writeStringList(offsets[28], object.smokingWindows);
-  writer.writeStringList(offsets[29], object.timeOfDayPatterns);
+  writer.writeStringList(offsets[24], object.reasons);
+  writer.writeLong(offsets[25], object.recoveryCount);
+  writer.writeString(offsets[26], object.reductionPlanJson);
+  writer.writeLong(offsets[27], object.relationshipEffectIndex);
+  writer.writeLong(offsets[28], object.sleepEffectIndex);
+  writer.writeStringList(offsets[29], object.smokingWindows);
+  writer.writeStringList(offsets[30], object.timeOfDayPatterns);
   writer.writeStringList(
-      offsets[30], object.triggers.map((e) => e.name).toList());
-  writer.writeLong(offsets[31], object.ttfcMinutesIndex);
-  writer.writeDateTime(offsets[32], object.updatedAt);
-  writer.writeString(offsets[33], object.userId);
-  writer.writeStringList(offsets[34], object.values);
-  writer.writeLong(offsets[35], object.yearsSmoking);
+      offsets[31], object.triggers.map((e) => e.name).toList());
+  writer.writeLong(offsets[32], object.ttfcMinutesIndex);
+  writer.writeDateTime(offsets[33], object.updatedAt);
+  writer.writeString(offsets[34], object.userId);
+  writer.writeStringList(offsets[35], object.values);
+  writer.writeLong(offsets[36], object.yearsSmoking);
 }
 
 UserProfile _userProfileDeserialize(
@@ -362,23 +375,24 @@ UserProfile _userProfileDeserialize(
   object.previousQuitAttempts = reader.readLongOrNull(offsets[21]);
   object.previousReductionAttempts = reader.readLongOrNull(offsets[22]);
   object.quitDate = reader.readDateTimeOrNull(offsets[23]);
-  object.recoveryCount = reader.readLong(offsets[24]);
-  object.reductionPlanJson = reader.readStringOrNull(offsets[25]);
-  object.relationshipEffectIndex = reader.readLongOrNull(offsets[26]);
-  object.sleepEffectIndex = reader.readLongOrNull(offsets[27]);
-  object.smokingWindows = reader.readStringList(offsets[28]) ?? [];
-  object.timeOfDayPatterns = reader.readStringList(offsets[29]) ?? [];
+  object.reasons = reader.readStringList(offsets[24]) ?? [];
+  object.recoveryCount = reader.readLong(offsets[25]);
+  object.reductionPlanJson = reader.readStringOrNull(offsets[26]);
+  object.relationshipEffectIndex = reader.readLongOrNull(offsets[27]);
+  object.sleepEffectIndex = reader.readLongOrNull(offsets[28]);
+  object.smokingWindows = reader.readStringList(offsets[29]) ?? [];
+  object.timeOfDayPatterns = reader.readStringList(offsets[30]) ?? [];
   object.triggers = reader
-          .readStringList(offsets[30])
+          .readStringList(offsets[31])
           ?.map(
               (e) => _UserProfiletriggersValueEnumMap[e] ?? TriggerType.stress)
           .toList() ??
       [];
-  object.ttfcMinutesIndex = reader.readLongOrNull(offsets[31]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[32]);
-  object.userId = reader.readString(offsets[33]);
-  object.values = reader.readStringList(offsets[34]) ?? [];
-  object.yearsSmoking = reader.readLongOrNull(offsets[35]);
+  object.ttfcMinutesIndex = reader.readLongOrNull(offsets[32]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[33]);
+  object.userId = reader.readString(offsets[34]);
+  object.values = reader.readStringList(offsets[35]) ?? [];
+  object.yearsSmoking = reader.readLongOrNull(offsets[36]);
   return object;
 }
 
@@ -440,33 +454,35 @@ P _userProfileDeserializeProp<P>(
     case 23:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 24:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 25:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 26:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 27:
       return (reader.readLongOrNull(offset)) as P;
     case 28:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 29:
       return (reader.readStringList(offset) ?? []) as P;
     case 30:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 31:
       return (reader
               .readStringList(offset)
               ?.map((e) =>
                   _UserProfiletriggersValueEnumMap[e] ?? TriggerType.stress)
               .toList() ??
           []) as P;
-    case 31:
-      return (reader.readLongOrNull(offset)) as P;
     case 32:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 33:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 34:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readString(offset)) as P;
     case 35:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 36:
       return (reader.readLongOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2625,6 +2641,231 @@ extension UserProfileQueryFilter
         upper: upper,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'reasons',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'reasons',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'reasons',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reasons',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'reasons',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+      reasonsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'reasons',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -5252,6 +5493,12 @@ extension UserProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByReasons() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reasons');
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByRecoveryCount() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'recoveryCount');
@@ -5490,6 +5737,12 @@ extension UserProfileQueryProperty
   QueryBuilder<UserProfile, DateTime?, QQueryOperations> quitDateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'quitDate');
+    });
+  }
+
+  QueryBuilder<UserProfile, List<String>, QQueryOperations> reasonsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reasons');
     });
   }
 
