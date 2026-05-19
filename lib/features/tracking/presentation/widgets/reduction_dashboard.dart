@@ -2,15 +2,13 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/dashboard_theme.dart';
 import '../../../onboarding/data/models/user_profile.dart';
 import '../../../onboarding/domain/entities/goal_type.dart';
 import '../../../onboarding/domain/services/profile_completeness_service.dart';
 import '../../../onboarding/presentation/providers/profile_completeness_provider.dart';
 import '../../../onboarding/presentation/screens/edit_profile_screen.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
-import '../../../achievements/presentation/widgets/achievements_preview_card.dart';
-import '../../../achievements/presentation/widgets/next_achievement_card.dart';
 import '../../../achievements/presentation/widgets/reasons_wall_card.dart';
 import '../../data/models/statistics.dart';
 import '../../data/models/log_entry.dart';
@@ -19,11 +17,15 @@ import '../widgets/consistency_score_card.dart';
 import '../widgets/recovery_stats_card.dart';
 import '../providers/statistics_provider.dart';
 import '../providers/tracking_provider.dart';
-import '../widgets/streak_card.dart';
+import '../widgets/hero_streak_section.dart';
+import '../widgets/quick_stats_row.dart';
+import '../widgets/bold_section_header.dart';
+import '../widgets/action_row.dart';
+import '../widgets/achievement_teaser_card.dart';
+import '../widgets/next_achievement_teaser.dart';
 import '../widgets/time_reclaimed_card.dart';
 import '../widgets/profile_nudge_card.dart';
 
-/// Reduction-specific dashboard per SRS §10.4.
 class ReductionDashboard extends ConsumerWidget {
   final UserProfile profile;
 
@@ -38,10 +40,8 @@ class ReductionDashboard extends ConsumerWidget {
 
     return completenessAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          _buildContent(context, ref, stats, ProfileCompleteness.empty(), logsAsync),
-      data: (completeness) =>
-          _buildContent(context, ref, stats, completeness, logsAsync),
+      error: (e, _) => _buildContent(context, ref, stats, ProfileCompleteness.empty(), logsAsync),
+      data: (completeness) => _buildContent(context, ref, stats, completeness, logsAsync),
     );
   }
 
@@ -52,8 +52,6 @@ class ReductionDashboard extends ConsumerWidget {
     ProfileCompleteness completeness,
     AsyncValue<List> logsAsync,
   ) {
-
-    // Compute consistency from real check-in logs
     int checkinDays = 0;
     int totalDays = 0;
     logsAsync.whenData((logs) {
@@ -71,214 +69,154 @@ class ReductionDashboard extends ConsumerWidget {
           profile.quitDate!.year, profile.quitDate!.month, profile.quitDate!.day);
       totalDays = DateTime.now().difference(start).inDays + 1;
     }
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Daily check-in banner
-        const DailyCheckinBanner(),
-        const SizedBox(height: 8),
 
-        // Mode chip — calm, not flame
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.secondaryColor.withValues(alpha:0.1),
-            borderRadius: BorderRadius.circular(20),
+    return Container(
+      color: DashboardTheme.background(context),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const DailyCheckinBanner(),
+          const SizedBox(height: 16),
+
+          HeroStreakSection(
+            statistics: stats,
+            quitDate: profile.quitDate,
+            mode: GoalType.reduceMasturbation,
           ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('🎯', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text('My Focus Journey',
-                  style: TextStyle(
-                      color: AppTheme.secondaryColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14)),
+          const SizedBox(height: 20),
+
+          QuickStatsRow(
+            stats: [
+              QuickStat(
+                icon: Icons.calendar_today,
+                label: 'Days',
+                value: '${stats.daysTracking}',
+                color: DashboardTheme.primary(context),
+              ),
+              QuickStat(
+                icon: Icons.shield,
+                label: 'Resisted',
+                value: '${stats.cravingsResisted}',
+                color: DashboardTheme.success(context),
+              ),
+              if (stats.totalCravings > 0)
+                QuickStat(
+                  icon: Icons.psychology,
+                  label: 'Cravings',
+                  value: '${stats.totalCravings}',
+                  color: DashboardTheme.warning(context),
+                ),
+              if (stats.lifeMinutesGained > 0)
+                QuickStat(
+                  icon: Icons.hourglass_top,
+                  label: 'Time Saved',
+                  value: '${(stats.lifeMinutesGained / 60).floor()}h',
+                  color: DashboardTheme.primary(context),
+                ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-        // Hero Streak Section — calm leaf/shield icon
-        StreakCard(
-          statistics: stats,
-          quitDate: profile.quitDate,
-          mode: GoalType.reduceMasturbation,
-        ),
-        const SizedBox(height: 16),
-
-        // Reasons Wall
-        const ReasonsWallCard(),
-        const SizedBox(height: 16),
-
-        // Urges resisted today
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.successColor.withValues(alpha:0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.shield,
-                      color: AppTheme.successColor, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Urges Resisted',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      Text(
-                        '${stats.cravingsResisted}',
-                        style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.successColor),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Time Reclaimed card — only if data available
-        if (completeness.hasTimeReclaimData) ...[
-          TimeReclaimedCard(statistics: stats),
+          BoldSectionHeader(title: 'Your Journey', icon: Icons.route),
+          const SizedBox(height: 12),
+          const ReasonsWallCard(),
           const SizedBox(height: 16),
-        ] else ...[
-          ProfileNudgeCard(
-            message: 'Add episode duration to see time reclaimed',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const EditProfileScreen(
-                  section: ProfileSection.reductionDetails,
+
+          if (completeness.hasTimeReclaimData) ...[
+            TimeReclaimedCard(statistics: stats),
+            const SizedBox(height: 16),
+          ] else ...[
+            ProfileNudgeCard(
+              message: 'Add episode duration to see time reclaimed',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const EditProfileScreen(
+                    section: ProfileSection.reductionDetails,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-        ],
+            const SizedBox(height: 16),
+          ],
 
-        // Values Anchor Card — shown if values are set; nudge to set them if not
-        if (completeness.hasValuesData && profile.values.isNotEmpty)
-          _ValuesAnchorCard(values: profile.values)
-        else
-          ProfileNudgeCard(
-            message: 'Add your values to see them on your dashboard',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const EditProfileScreen(
-                  section: ProfileSection.valuesSection,
+          if (completeness.hasValuesData && profile.values.isNotEmpty)
+            _ValuesAnchorCard(values: profile.values)
+          else
+            ProfileNudgeCard(
+              message: 'Add your values to see them on your dashboard',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const EditProfileScreen(
+                    section: ProfileSection.valuesSection,
+                  ),
                 ),
               ),
             ),
-          ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-        // Distress Trend — only if >=3 data points (FR-P03)
-        if (completeness.hasDistressBaseline &&
-            stats.distressTrend.length >= 3)
-          _DistressTrendCard(trend: stats.distressTrend),
-        const SizedBox(height: 16),
+          if (completeness.hasDistressBaseline && stats.distressTrend.length >= 3)
+            _DistressTrendCard(trend: stats.distressTrend),
+          const SizedBox(height: 16),
 
-        // Consistency — counts actual check-in days from logs
-        if (totalDays > 0) ...[
-          ConsistencyScoreCard(
-            checkinDays: checkinDays,
-            totalDays: totalDays,
+          if (totalDays > 0 || stats.recoveryCount > 0) ...[
+            BoldSectionHeader(title: 'Patterns', icon: Icons.insights),
+            const SizedBox(height: 12),
+            if (totalDays > 0) ...[
+              ConsistencyScoreCard(
+                checkinDays: checkinDays,
+                totalDays: totalDays,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (stats.recoveryCount > 0) ...[
+              RecoveryStatsCard(
+                recoveryCount: stats.recoveryCount,
+                topTrigger: stats.triggerFrequency.isNotEmpty
+                    ? stats.triggerFrequency.entries
+                        .reduce((a, b) => a.value > b.value ? a : b)
+                        .key
+                    : null,
+                longestPostRecoveryStreak: stats.longestStreak,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ],
+
+          BoldSectionHeader(title: 'Keep Going', icon: Icons.rocket_launch),
+          const SizedBox(height: 12),
+          const AchievementTeaserCard(),
+          const SizedBox(height: 16),
+          const NextAchievementTeaser(),
+          const SizedBox(height: 20),
+
+          ActionRow(
+            actions: [
+              DashboardAction(
+                icon: Icons.self_improvement,
+                label: 'Craving Toolkit',
+                subtitle: 'Exercises to ride out urges',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CravingToolkitScreen()),
+                  );
+                },
+                gradientColor: DashboardTheme.primary(context),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-        ],
 
-        // Recovery Journey — only shown after first recovery
-        if (stats.recoveryCount > 0) ...[
-          RecoveryStatsCard(
-            recoveryCount: stats.recoveryCount,
-            topTrigger: stats.triggerFrequency.isNotEmpty
-                ? stats.triggerFrequency.entries
-                    .reduce((a, b) => a.value > b.value ? a : b)
-                    .key
-                : null,
-            longestPostRecoveryStreak: stats.longestStreak,
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // ── Achievements ───────────────────────────────────────────────
-        const AchievementsPreviewCard(),
-        const NextAchievementCard(),
-        const SizedBox(height: 16),
-
-        // Quick Actions Row
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Quick Actions',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _QuickActionChip(
-                      icon: Icons.flash_on,
-                      label: 'Log Urge',
-                      color: AppTheme.warningColor,
-                      onTap: () {
-                        // Handled by FAB
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _QuickActionChip(
-                      icon: Icons.self_improvement,
-                      label: 'Open Toolkit',
-                      color: AppTheme.primaryColor,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const CravingToolkitScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _QuickActionChip(
-                      icon: Icons.book,
-                      label: 'Journal',
-                      color: AppTheme.secondaryColor,
-                      onTap: () {
-                        // TODO: Navigate to journal entry
-                      },
-                    ),
-                  ],
-                ),
-              ],
+          if (completeness.fillPercentage < 0.5)
+            ProfileNudgeCard(
+              message: 'Complete more of your profile to unlock personalized features',
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
 
-        // Profile nudge if incomplete
-        if (completeness.fillPercentage < 0.5)
-          ProfileNudgeCard(
-            message:
-                'Complete more of your profile to unlock personalized features',
-          ),
-
-        const SizedBox(height: 96),
-      ],
+          const SizedBox(height: 96),
+        ],
+      ),
     );
   }
 }
@@ -290,35 +228,51 @@ class _ValuesAnchorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.favorite, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                Text('Your Reasons',
-                    style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: values.map((v) {
-                return Chip(
-                  label: Text(v),
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha:0.1),
-                  labelStyle: const TextStyle(color: AppTheme.primaryColor),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DashboardTheme.surface(context),
+        borderRadius: BorderRadius.circular(DashboardTheme.cardRadius),
+        border: Border.all(color: DashboardTheme.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DashboardTheme.primary(context).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.favorite, color: DashboardTheme.primary(context), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Your Values',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: DashboardTheme.textPrimary(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: values.map((v) {
+              return Chip(
+                label: Text(v),
+                backgroundColor: DashboardTheme.primary(context).withValues(alpha: 0.12),
+                labelStyle: TextStyle(color: DashboardTheme.primary(context), fontWeight: FontWeight.w600),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: BorderSide.none,
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -331,54 +285,71 @@ class _DistressTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.trending_down,
-                    color: AppTheme.secondaryColor),
-                const SizedBox(width: 8),
-                Text('Distress Trend (7 days)',
-                    style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 16),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DashboardTheme.surface(context),
+        borderRadius: BorderRadius.circular(DashboardTheme.cardRadius),
+        border: Border.all(color: DashboardTheme.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DashboardTheme.success(context).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.trending_down, color: DashboardTheme.success(context), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Distress Trend',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: DashboardTheme.textPrimary(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
             SizedBox(
-              height: 100,
+              height: 120,
               child: trend.length >= 3
                   ? CustomPaint(
-                      painter: _SimpleLinePainter(trend: trend),
+                      painter: _SimpleLinePainter(
+                        trend: trend,
+                        lineColor: DashboardTheme.primary(context),
+                      ),
                       size: Size.infinite,
                     )
-                  : const Center(
-                      child: Text('Need at least 3 check-ins for trend')),
+                  : const Center(child: Text('Need at least 3 check-ins for trend')),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-/// Minimal line chart painter for distress trend.
 class _SimpleLinePainter extends CustomPainter {
   final List<double> trend;
-  _SimpleLinePainter({required this.trend});
+  final Color lineColor;
+
+  _SimpleLinePainter({required this.trend, this.lineColor = const Color(0xFF6C63FF)});
 
   @override
   void paint(Canvas canvas, Size size) {
     if (trend.isEmpty) return;
     final paint = Paint()
-      ..color = AppTheme.primaryColor
-      ..strokeWidth = 2.0
+      ..color = lineColor
+      ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke;
 
     final dotPaint = Paint()
-      ..color = AppTheme.primaryColor
+      ..color = lineColor
       ..style = PaintingStyle.fill;
 
     final stepX = size.width / (trend.length - 1).clamp(1, 100);
@@ -394,35 +365,10 @@ class _SimpleLinePainter extends CustomPainter {
       canvas.drawPoints(PointMode.polygon, points, paint);
     }
     for (final p in points) {
-      canvas.drawCircle(p, 4, dotPaint);
+      canvas.drawCircle(p, 5, dotPaint);
     }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class _QuickActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18, color: color),
-      label: Text(label),
-      onPressed: onTap,
-      backgroundColor: color.withValues(alpha:0.1),
-      side: BorderSide(color: color.withValues(alpha:0.3)),
-    );
-  }
 }
