@@ -1,122 +1,91 @@
-import 'package:isar/isar.dart';
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/services/database/app_database.dart' as drift_db;
 import '../models/relapse_models.dart';
 import '../models/lapse_recovery_session_model.dart';
-import '../../../../core/services/database/isar_service.dart';
 
 class RelapseRepository {
-  Future<Isar> get _db async => await IsarService.instance;
+  final drift_db.AppDatabase db;
+  static final _uuid = const Uuid();
+
+  RelapseRepository(this.db);
 
   // ============= RELAPSE PLAN OPERATIONS =============
 
-  /// Get or create relapse plan for user
   Future<RelapsePlan> getOrCreatePlan(String userId) async {
-    final isar = await _db;
-    
-    var plan = await isar.relapsePlans
-        .filter()
-        .userIdEqualTo(userId)
-        .findFirst();
+    var row = await (db.select(db.relapsePlans)
+        ..where((t) => t.userId.equals(userId))).getSingleOrNull();
 
-    if (plan == null) {
-      plan = RelapsePlan()
-        ..userId = userId
-        ..customSteps = RelapsePlan.getDefaultCustomSteps();
-      
-      plan.ensureThreePanicSteps();
-      
-      await isar.writeTxn(() async {
-        await isar.relapsePlans.put(plan!);
-      });
+    if (row == null) {
+      final plan = RelapsePlan(userId: userId);
+      final companion = _planToCompanion(plan);
+      final id = await db.into(db.relapsePlans).insert(companion);
+      row = (await (db.select(db.relapsePlans)
+          ..where((t) => t.id.equals(id))).getSingleOrNull())!;
     }
 
-    return plan;
+    return _planFromRow(row);
   }
 
-  /// Force a fresh read from database, bypassing any caching
   Future<RelapsePlan?> getPlanFresh(String userId) async {
-    final isar = await _db;
-    
-    // Query directly from database
-    final plan = await isar.relapsePlans
-        .filter()
-        .userIdEqualTo(userId)
-        .findFirst();
-    
-    return plan;
+    final row = await (db.select(db.relapsePlans)
+        ..where((t) => t.userId.equals(userId))).getSingleOrNull();
+    if (row == null) return null;
+    return _planFromRow(row);
   }
 
-  /// Update relapse plan
   Future<RelapsePlan> updatePlan(RelapsePlan plan) async {
-    final isar = await _db;
-    
     plan.updatedAt = DateTime.now();
     plan.ensureThreePanicSteps();
-    
-    await isar.writeTxn(() async {
-      await isar.relapsePlans.put(plan);
-    });
-
+    final companion = _planToCompanion(plan);
+    await (db.update(db.relapsePlans)
+        ..where((t) => t.id.equals(plan.id))).write(companion);
     return plan;
   }
 
-  /// Update custom steps
   Future<void> updateCustomSteps(String userId, List<String> steps) async {
     final plan = await getOrCreatePlan(userId);
     plan.customSteps = steps;
     await updatePlan(plan);
   }
 
-  /// Update panic steps
   Future<void> updatePanicSteps(String userId, List<PanicStep> steps) async {
     final plan = await getOrCreatePlan(userId);
-    
-    // Ensure exactly 3 steps
+
     if (steps.length != 3) {
       throw ArgumentError('Panic mode must have exactly 3 steps');
     }
-    
-    // CRITICAL FIX: Create completely NEW PanicStep instances
-    // Isar doesn't detect changes to embedded objects properly,
-    // so we need to create fresh instances to force persistence
+
     final List<PanicStep> newSteps = [];
-    
     for (int i = 0; i < steps.length; i++) {
       final oldStep = steps[i];
-      
-      // Create a COMPLETELY NEW instance
-      final newStep = PanicStep()
-        ..title = oldStep.title
-        ..description = oldStep.description
-        ..icon = oldStep.icon
-        ..actionType = oldStep.actionType
-        ..contactId = oldStep.contactId
-        ..actionData = oldStep.actionData
-        ..displayOrder = i;
-      
+      final newStep = PanicStep(
+        title: oldStep.title,
+        description: oldStep.description,
+        icon: oldStep.icon,
+        actionType: oldStep.actionType,
+        contactId: oldStep.contactId,
+        actionData: oldStep.actionData,
+        displayOrder: i,
+      );
       newSteps.add(newStep);
     }
-    
-    // Replace the entire list with new instances
+
     plan.panicSteps = newSteps;
-    
     await updatePlan(plan);
   }
 
-  /// Get panic steps for quick access
   Future<List<PanicStep>> getPanicSteps(String userId) async {
     final plan = await getOrCreatePlan(userId);
     return plan.panicSteps;
   }
 
-  /// Reset panic steps to defaults
   Future<void> resetPanicSteps(String userId) async {
     final plan = await getOrCreatePlan(userId);
     plan.panicSteps = PanicStep.getDefaults();
     await updatePlan(plan);
   }
 
-  /// Reset custom steps to defaults
   Future<void> resetCustomSteps(String userId) async {
     final plan = await getOrCreatePlan(userId);
     plan.customSteps = RelapsePlan.getDefaultCustomSteps();
@@ -125,141 +94,102 @@ class RelapseRepository {
 
   // ============= CONTACT OPERATIONS =============
 
-  /// Get all contacts for user
   Future<List<RelapseContact>> getContacts(String userId) async {
-    final isar = await _db;
-    
-    return await isar.relapseContacts
-        .filter()
-        .userIdEqualTo(userId)
-        .sortByDisplayOrder()
-        .findAll();
+    final rows = await (db.select(db.relapseContacts)
+      ..where((t) => t.userId.equals(userId))
+      ..orderBy([(t) => OrderingTerm.asc(t.displayOrder)])).get();
+    return rows.map(_contactFromRow).toList();
   }
 
-  /// Get single contact by ID
   Future<RelapseContact?> getContact(int id) async {
-    final isar = await _db;
-    return await isar.relapseContacts.get(id);
+    final row = await (db.select(db.relapseContacts)
+        ..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
+    return _contactFromRow(row);
   }
 
-  /// Add new contact
   Future<RelapseContact> addContact(RelapseContact contact) async {
-    final isar = await _db;
-    
-    // Get current max display order
     final contacts = await getContacts(contact.userId);
     contact.displayOrder = contacts.isEmpty ? 0 : contacts.last.displayOrder + 1;
-    
-    await isar.writeTxn(() async {
-      await isar.relapseContacts.put(contact);
-    });
 
-    return contact;
+    final companion = _contactToCompanion(contact);
+    final id = await db.into(db.relapseContacts).insert(companion);
+    return contact.copyWith(id: id);
   }
 
-  /// Update existing contact
   Future<RelapseContact> updateContact(RelapseContact contact) async {
-    final isar = await _db;
-    
     contact.updatedAt = DateTime.now();
-    
-    await isar.writeTxn(() async {
-      await isar.relapseContacts.put(contact);
-    });
-
+    final companion = _contactToCompanion(contact);
+    await (db.update(db.relapseContacts)
+        ..where((t) => t.id.equals(contact.id))).write(companion);
     return contact;
   }
 
-  /// Delete contact
   Future<bool> deleteContact(int id) async {
-    final isar = await _db;
-    
-    bool deleted = false;
-    await isar.writeTxn(() async {
-      deleted = await isar.relapseContacts.delete(id);
-    });
-
-    return deleted;
+    final deleted = await (db.delete(db.relapseContacts)
+        ..where((t) => t.id.equals(id))).go();
+    return deleted > 0;
   }
 
-  /// Reorder contacts
   Future<void> reorderContacts(List<RelapseContact> contacts) async {
-    final isar = await _db;
-    
-    // Update display order
-    for (int i = 0; i < contacts.length; i++) {
-      contacts[i].displayOrder = i;
-      contacts[i].updatedAt = DateTime.now();
-    }
-    
-    await isar.writeTxn(() async {
-      await isar.relapseContacts.putAll(contacts);
-    });
-  }
-
-  /// Get contact count for user
-  Future<int> getContactCount(String userId) async {
-    final isar = await _db;
-    
-    return await isar.relapseContacts
-        .filter()
-        .userIdEqualTo(userId)
-        .count();
-  }
-
-  /// Get contacts with phone numbers only
-  Future<List<RelapseContact>> getContactsWithPhone(String userId) async {
-    final isar = await _db;
-    
-    return await isar.relapseContacts
-        .filter()
-        .userIdEqualTo(userId)
-        .phoneNumberIsNotNull()
-        .sortByDisplayOrder()
-        .findAll();
-  }
-
-  // ============= LAPSE RECOVERY SESSIONS =============
-
-  static const _uuid = Uuid();
-
-  /// Create a new lapse recovery session and return its UUID.
-  Future<String> createRecoverySession({
-    required String userId,
-    required String mode,
-  }) async {
-    final isar = await _db;
-    final sessionId = _uuid.v4();
-
-    final model = LapseRecoverySessionModel()
-      ..sessionId = sessionId
-      ..userId = userId
-      ..startedAt = DateTime.now().toUtc()
-      ..mode = mode;
-
-    await isar.writeTxn(() => isar.lapseRecoverySessionModels.put(model));
-    return sessionId;
-  }
-
-  /// Update the triggers selected during Step 1 of the recovery flow.
-  Future<void> updateRecoverySessionTriggers({
-    required String sessionId,
-    required List<String> triggers,
-  }) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.lapseRecoverySessionModels
-          .filter()
-          .sessionIdEqualTo(sessionId)
-          .findFirst();
-      if (model != null) {
-        model.selectedTriggers = triggers;
-        await isar.lapseRecoverySessionModels.put(model);
+    await db.transaction(() async {
+      for (int i = 0; i < contacts.length; i++) {
+        contacts[i].displayOrder = i;
+        contacts[i].updatedAt = DateTime.now();
+        final companion = _contactToCompanion(contacts[i]);
+        await (db.update(db.relapseContacts)
+            ..where((t) => t.id.equals(contacts[i].id))).write(companion);
       }
     });
   }
 
-  /// Mark a recovery session as completed with the chosen action.
+  Future<int> getContactCount(String userId) async {
+    final rows = await (db.select(db.relapseContacts)
+        ..where((t) => t.userId.equals(userId))).get();
+    return rows.length;
+  }
+
+  Future<List<RelapseContact>> getContactsWithPhone(String userId) async {
+    final rows = await (db.select(db.relapseContacts)
+      ..where((t) => t.userId.equals(userId))
+      ..where((t) => t.phoneNumber.isNotNull())
+      ..orderBy([(t) => OrderingTerm.asc(t.displayOrder)])).get();
+    return rows.map(_contactFromRow).toList();
+  }
+
+  // ============= LAPSE RECOVERY SESSIONS =============
+
+  Future<String> createRecoverySession({
+    required String userId,
+    required String mode,
+  }) async {
+    final sessionId = _uuid.v4();
+
+    final companion = drift_db.LapseRecoverySessionsCompanion(
+      sessionId: Value(sessionId),
+      userId: Value(userId),
+      startedAt: Value(DateTime.now().toUtc()),
+      mode: Value(mode),
+    );
+
+    await db.into(db.lapseRecoverySessions).insert(companion);
+    return sessionId;
+  }
+
+  Future<void> updateRecoverySessionTriggers({
+    required String sessionId,
+    required List<String> triggers,
+  }) async {
+    final row = await (db.select(db.lapseRecoverySessions)
+        ..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+    if (row != null) {
+      await (db.update(db.lapseRecoverySessions)
+          ..where((t) => t.id.equals(row.id))).write(drift_db.LapseRecoverySessionsCompanion(
+        selectedTriggers: Value(triggers),
+      ));
+    }
+  }
+
   Future<void> completeRecoverySession({
     required String sessionId,
     required LapseRecoveryAction action,
@@ -267,54 +197,42 @@ class RelapseRepository {
     bool readRecoveryGuide = false,
     String? recoveryNote,
   }) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.lapseRecoverySessionModels
-          .filter()
-          .sessionIdEqualTo(sessionId)
-          .findFirst();
-      if (model != null) {
-        model.completedAt = DateTime.now().toUtc();
-        model.chosenAction = action;
-        model.openedToolkit = openedToolkit;
-        model.readRecoveryGuide = readRecoveryGuide;
-        model.recoveryNote = recoveryNote;
-        await isar.lapseRecoverySessionModels.put(model);
-      }
-    });
+    final row = await (db.select(db.lapseRecoverySessions)
+        ..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+    if (row != null) {
+      await (db.update(db.lapseRecoverySessions)
+          ..where((t) => t.id.equals(row.id))).write(drift_db.LapseRecoverySessionsCompanion(
+        completedAt: Value(DateTime.now().toUtc()),
+        chosenAction: Value(action.name),
+        openedToolkit: Value(openedToolkit),
+        readRecoveryGuide: Value(readRecoveryGuide),
+        recoveryNote: Value(recoveryNote),
+      ));
+    }
   }
 
-  /// Get all recovery sessions for a user, most recent first.
   Future<List<LapseRecoverySessionModel>> getRecoverySessions(
     String userId, {
     int? limit,
   }) async {
-    final isar = await _db;
-    // Use dynamic to bypass Isar's type-state QueryBuilder — the generic
-    // parameter changes after .sortBy*() / .limit().
-    dynamic query = isar.lapseRecoverySessionModels
-        .filter()
-        .userIdEqualTo(userId)
-        .sortByStartedAtDesc();
-
+    final q = db.select(db.lapseRecoverySessions);
+    q.where((t) => t.userId.equals(userId));
+    q.orderBy([(t) => OrderingTerm.desc(t.startedAt)]);
     if (limit != null) {
-      query = query.limit(limit);
+      q.limit(limit);
     }
-
-    return query.findAll();
+    final rows = await q.get();
+    return rows.map(_recoverySessionFromRow).toList();
   }
 
-  /// Count completed recovery sessions for a user.
   Future<int> getRecoveryCount(String userId) async {
-    final isar = await _db;
-    return isar.lapseRecoverySessionModels
-        .filter()
-        .userIdEqualTo(userId)
-        .completedAtIsNotNull()
-        .count();
+    final q = db.select(db.lapseRecoverySessions);
+    q.where((t) => t.userId.equals(userId));
+    q.where((t) => t.completedAt.isNotNull());
+    final rows = await q.get();
+    return rows.length;
   }
 
-  /// Get the most common triggers from recovery sessions.
   Future<List<String>> getCommonTriggers(String userId) async {
     final sessions = await getRecoverySessions(userId);
     final counts = <String, int>{};
@@ -327,4 +245,102 @@ class RelapseRepository {
       ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(3).map((e) => e.key).toList();
   }
+
+  // ── Mappers ──────────────────────────────────────────────────────────────
+
+  RelapsePlan _planFromRow(drift_db.DbRelapsePlan row) {
+    final panicStepsData = row.panicSteps;
+    final panicSteps = panicStepsData != null && panicStepsData.isNotEmpty
+        ? panicStepsData
+            .map((j) => PanicStep.fromJson(j))
+            .toList()
+        : PanicStep.getDefaults();
+
+    return RelapsePlan(
+      id: row.id,
+      userId: row.userId,
+      customSteps: row.customSteps ?? [],
+      panicSteps: panicSteps,
+      notes: row.notes,
+      nextReviewDate: row.nextReviewDate,
+      personalRecoveryNote: row.personalRecoveryNote,
+      lastReviewedAt: row.lastReviewedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    );
+  }
+
+  drift_db.RelapsePlansCompanion _planToCompanion(RelapsePlan p) {
+    return drift_db.RelapsePlansCompanion(
+      userId: Value(p.userId),
+      customSteps: Value(p.customSteps),
+      panicSteps: Value(p.panicStepsToJson()),
+      notes: Value(p.notes),
+      nextReviewDate: Value(p.nextReviewDate),
+      personalRecoveryNote: Value(p.personalRecoveryNote),
+      lastReviewedAt: Value(p.lastReviewedAt),
+      createdAt: Value(p.createdAt),
+      updatedAt: Value(p.updatedAt),
+    );
+  }
+
+  RelapseContact _contactFromRow(drift_db.DbRelapseContact row) {
+    return RelapseContact(
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      phoneNumber: row.phoneNumber,
+      relationship: row.relationship,
+      notes: row.notes,
+      displayOrder: row.displayOrder,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    );
+  }
+
+  drift_db.RelapseContactsCompanion _contactToCompanion(RelapseContact c) {
+    return drift_db.RelapseContactsCompanion(
+      userId: Value(c.userId),
+      name: Value(c.name),
+      phoneNumber: Value(c.phoneNumber),
+      relationship: Value(c.relationship),
+      notes: Value(c.notes),
+      displayOrder: Value(c.displayOrder),
+      createdAt: Value(c.createdAt),
+      updatedAt: Value(c.updatedAt),
+    );
+  }
+
+  LapseRecoverySessionModel _recoverySessionFromRow(
+      drift_db.DbLapseRecoverySession row) {
+    return LapseRecoverySessionModel(
+      id: row.id,
+      sessionId: row.sessionId,
+      userId: row.userId,
+      startedAt: row.startedAt,
+      completedAt: row.completedAt,
+      chosenAction: row.chosenAction != null
+          ? LapseRecoveryAction.values.byName(row.chosenAction!)
+          : null,
+      selectedTriggers: row.selectedTriggers ?? [],
+      openedToolkit: row.openedToolkit,
+      readRecoveryGuide: row.readRecoveryGuide,
+      recoveryNote: row.recoveryNote,
+      mode: row.mode,
+    );
+  }
+}
+
+extension on RelapseContact {
+  RelapseContact copyWith({int? id}) => RelapseContact(
+        id: id ?? this.id,
+        userId: userId,
+        name: name,
+        phoneNumber: phoneNumber,
+        relationship: relationship,
+        notes: notes,
+        displayOrder: displayOrder,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
 }

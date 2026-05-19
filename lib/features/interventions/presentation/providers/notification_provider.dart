@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/notification_models.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../services/notification_manager.dart';
@@ -8,8 +9,9 @@ import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 
 // ─── Infrastructure providers ────────────────────────────────────────────────
 
-final notificationRepositoryProvider = Provider<NotificationRepository>((_) {
-  return NotificationRepository();
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return NotificationRepository(db);
 });
 
 /// Initialises once, cached for the lifetime of the app.
@@ -27,7 +29,7 @@ FutureProvider<NotificationManager>((ref) async {
 final notificationPreferencesProvider =
 FutureProvider.autoDispose<NotificationPreferences>((ref) async {
   final userId = await ref.watch(currentUserIdProvider.future);
-  if (userId == null) return NotificationPreferences()..userId = '';
+  if (userId == null) return NotificationPreferences(userId: '');
   return ref.watch(notificationRepositoryProvider).getPreferences(userId);
 });
 
@@ -80,7 +82,7 @@ class NotificationPreferencesNotifier
     final userId = await ref.watch(currentUserIdProvider.future);
 
     if (userId == null || userId.isEmpty) {
-      return NotificationPreferences()..userId = '';
+      return NotificationPreferences(userId: '');
     }
     
     return manager.getPreferences(userId);

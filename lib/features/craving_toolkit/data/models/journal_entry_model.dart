@@ -1,36 +1,23 @@
-import 'package:isar/isar.dart';
-
-part 'journal_entry_model.g.dart';
-
-/// Freeform journal entry with optional mood tag.
-///
-/// Can be created standalone from the Journal tab or linked from a toolkit
-/// exercise session via [sourceExerciseId].
-@collection
 class JournalEntryModel {
-  Id id = Isar.autoIncrement;
-
-  /// Stable UUID for cross-referencing.
-  @Index(unique: true)
-  late String entryId;
-
-  @Index()
-  late String userId;
-
-  @Index()
-  late DateTime createdAt; // UTC
-
+  int id;
+  String entryId;
+  String userId;
+  DateTime createdAt;
   DateTime? updatedAt;
-
-  /// Freeform text content.  Encrypted at the Isar box level.
-  late String content;
-
-  /// [MoodTag.name] or null.
+  String content;
   String? moodTag;
-
-  /// If created from a toolkit exercise, the exercise's stable UUID.
   String? sourceExerciseId;
-
-  /// Denormalised exercise name for display.
   String? sourceExerciseName;
+
+  JournalEntryModel({
+    this.id = 0,
+    required this.entryId,
+    required this.userId,
+    DateTime? createdAt,
+    this.updatedAt,
+    required this.content,
+    this.moodTag,
+    this.sourceExerciseId,
+    this.sourceExerciseName,
+  }) : createdAt = createdAt ?? DateTime.now();
 }

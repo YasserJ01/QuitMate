@@ -39,9 +39,10 @@ dependencies:
   riverpod_annotation: ^2.3.3
 
   # Local Database
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0
+  drift: ^2.22.0
+  sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.1
+  path: ^1.9.0
 
   # URL Launcher
   url_launcher: ^6.3.0
@@ -62,6 +63,8 @@ dependencies:
   flutter_local_notifications: ^17.2.2   # local scheduling, works offline
   timezone: ^0.9.4                        # required by flutter_local_notifications
   flutter_timezone: ^5.0.2      # resolves device IANA timezone name at runtime
+  local_auth: ^2.3.0             # biometric / PIN authentication
+  package_info_plus: ^8.1.2      # app version info for About screen
 
 
 
@@ -78,7 +81,7 @@ dev_dependencies:
   # Code Generation
   build_runner: ^2.4.7
   riverpod_generator: ^2.3.9
-  isar_generator: ^3.1.0+1
+  drift_dev: ^2.22.0
 
   # Testing
   mockito: ^5.4.4

@@ -1,44 +1,36 @@
-import 'package:isar/isar.dart';
-import '../../../../core/services/database/isar_service.dart';
+import 'package:drift/drift.dart';
+import '../../../../core/services/database/app_database.dart' as drift_db;
 import '../../domain/entities/achievement.dart';
 import '../../domain/repositories/i_achievement_repository.dart';
-import '../models/achievement_model.dart';
 
 class AchievementRepositoryImpl implements IAchievementRepository {
-  Future<Isar> get _db => IsarService.instance;
+  final drift_db.AppDatabase db;
+
+  AchievementRepositoryImpl(this.db);
 
   @override
   Future<List<Achievement>> getAchievements(String userId) async {
-    final isar = await _db;
-    final models = await isar.achievementModels
-        .filter()
-        .userIdEqualTo(userId)
-        .findAll();
-    return models.map(_toDomain).toList();
+    final rows = await (db.select(db.achievements)
+      ..where((t) => t.userId.equals(userId))).get();
+    return rows.map(_toDomain).toList();
   }
 
   @override
   Future<List<Achievement>> getEarnedAchievements(String userId) async {
-    final isar = await _db;
-    final models = await isar.achievementModels
-        .filter()
-        .userIdEqualTo(userId)
-        .isUnlockedEqualTo(true)
-        .findAll();
-    return models
-        .map(_toDomain)
-        .where((a) => a.unlockedAt != null)
-        .toList()
-      ..sort((a, b) => b.unlockedAt!.compareTo(a.unlockedAt!));
+    final rows = await (db.select(db.achievements)
+      ..where((t) => t.userId.equals(userId))
+      ..where((t) => t.isUnlocked.equals(true))).get();
+    final achievements = rows.map(_toDomain).toList();
+    achievements.removeWhere((a) => a.unlockedAt == null);
+    achievements.sort((a, b) => b.unlockedAt!.compareTo(a.unlockedAt!));
+    return achievements;
   }
 
   @override
   Future<int> getAchievementCount(String userId) async {
-    final isar = await _db;
-    return isar.achievementModels
-        .filter()
-        .userIdEqualTo(userId)
-        .count();
+    final rows = await (db.select(db.achievements)
+      ..where((t) => t.userId.equals(userId))).get();
+    return rows.length;
   }
 
   @override
@@ -47,34 +39,31 @@ class AchievementRepositoryImpl implements IAchievementRepository {
     List<AchievementUpdate> updates,
   ) async {
     if (updates.isEmpty) return;
-    final isar = await _db;
 
-    final modelMap = <String, AchievementModel>{};
-    for (final update in updates) {
-      final model = await isar.achievementModels
-          .filter()
-          .userIdEqualTo(userId)
-          .achievementIdEqualTo(update.achievementId)
-          .findFirst();
-      if (model != null) {
-        modelMap[update.achievementId] = model;
-      }
+    final achievementIds = updates.map((u) => u.achievementId).toSet();
+    final rows = await (db.select(db.achievements)
+      ..where((t) => t.userId.equals(userId))
+      ..where((t) => t.achievementId.isIn(achievementIds))).get();
+
+    final modelMap = <String, drift_db.DbAchievement>{};
+    for (final row in rows) {
+      modelMap[row.achievementId] = row;
     }
 
-    final toWrite = <AchievementModel>[];
-    for (final update in updates) {
-      final model = modelMap[update.achievementId];
-      if (model == null) continue;
-      model.progressValue = update.progressValue;
-      model.isUnlocked = update.isUnlocked;
-      if (update.unlockedAt != null) {
-        model.unlockedAt = update.unlockedAt;
-      }
-      toWrite.add(model);
-    }
+    await db.transaction(() async {
+      for (final update in updates) {
+        final row = modelMap[update.achievementId];
+        if (row == null) continue;
 
-    await isar.writeTxn(() async {
-      await isar.achievementModels.putAll(toWrite);
+        await (db.update(db.achievements)
+          ..where((t) => t.id.equals(row.id))).write(drift_db.AchievementsCompanion(
+            progressValue: Value(update.progressValue),
+            isUnlocked: Value(update.isUnlocked),
+            unlockedAt: update.unlockedAt != null
+                ? Value(update.unlockedAt)
+                : const Value.absent(),
+          ));
+      }
     });
   }
 
@@ -84,68 +73,66 @@ class AchievementRepositoryImpl implements IAchievementRepository {
     required String mode,
   }) async {
     final existingCount = await getAchievementCount(userId);
-    if (existingCount > 0) return; // already seeded — idempotent
+    if (existingCount > 0) return;
 
     final definitions = _buildDefinitionsForMode(mode, userId);
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      await isar.achievementModels.putAll(definitions);
+    await db.batch((b) {
+      b.insertAll(db.achievements, definitions,
+          mode: InsertMode.insertOrIgnore);
     });
   }
 
-  // ── Helper: model → domain ──────────────────────────────────────────────
-
-  Achievement _toDomain(AchievementModel m) {
+  Achievement _toDomain(drift_db.DbAchievement row) {
     return Achievement(
-      id: m.achievementId,
-      name: m.name,
-      description: m.description,
-      iconEmoji: m.iconEmoji,
+      id: row.achievementId,
+      name: row.name,
+      description: row.description,
+      iconEmoji: row.iconEmoji,
       category: AchievementCategory.values.firstWhere(
-        (c) => c.name == m.category,
+        (c) => c.name == row.category,
         orElse: () => AchievementCategory.streak,
       ),
-      modeFilter: m.modeFilter != null
+      modeFilter: row.modeFilter != null
           ? GoalTypeFilter.values.firstWhere(
-              (f) => f.name == m.modeFilter,
+              (f) => f.name == row.modeFilter,
               orElse: () => GoalTypeFilter.quitSmoking,
             )
           : null,
-      progressValue: m.progressValue,
-      progressMax: m.progressMax,
-      isUnlocked: m.isUnlocked,
-      unlockedAt: m.unlockedAt,
+      progressValue: row.progressValue,
+      progressMax: row.progressMax,
+      isUnlocked: row.isUnlocked,
+      unlockedAt: row.unlockedAt,
     );
   }
 
   // ── Definition catalogue ────────────────────────────────────────────────
 
-  static List<AchievementModel> _buildDefinitionsForMode(
+  List<drift_db.AchievementsCompanion> _buildDefinitionsForMode(
     String mode,
     String userId,
   ) {
     final isSmoking = mode == 'quitSmoking';
-    final definitions = <AchievementModel>[];
+    final definitions = <drift_db.AchievementsCompanion>[];
 
     void add(String id, String name, String desc, String emoji,
         AchievementCategory cat, int max,
         {String? modeFilter}) {
-      definitions.add(AchievementModel()
-        ..achievementId = id
-        ..name = name
-        ..description = desc
-        ..iconEmoji = emoji
-        ..category = cat.name
-        ..modeFilter = modeFilter
-        ..progressValue = 0
-        ..progressMax = max
-        ..isUnlocked = false
-        ..unlockedAt = null
-        ..userId = userId);
+      definitions.add(drift_db.AchievementsCompanion(
+        userId: Value(userId),
+        achievementId: Value(id),
+        name: Value(name),
+        description: Value(desc),
+        iconEmoji: Value(emoji),
+        category: Value(cat.name),
+        modeFilter: Value(modeFilter),
+        progressValue: Value(0),
+        progressMax: Value(max),
+        isUnlocked: Value(false),
+        unlockedAt: const Value(null),
+      ));
     }
 
     if (isSmoking) {
-      // ── Smoking-specific ──────────────────────────────────────────────
       add('streak-day-1', 'First Smoke-Free Day',
           'You made it through your first day.', '🌅',
           AchievementCategory.streak, 1,
@@ -195,7 +182,6 @@ class AchievementRepositoryImpl implements IAchievementRepository {
           AchievementCategory.craving, 50,
           modeFilter: 'quitSmoking');
     } else {
-      // ── Reduction-specific ────────────────────────────────────────────
       add('streak-day-3', 'Three Days',
           'Three days of choosing your values.', '🌱',
           AchievementCategory.streak, 3,
@@ -226,7 +212,6 @@ class AchievementRepositoryImpl implements IAchievementRepository {
           modeFilter: 'reduceMasturbation');
     }
 
-    // ── Shared (both modes) ─────────────────────────────────────────────
     add('recovery-1', 'Back on Course',
         'You noticed, you acknowledged, and you kept going.', '🔄',
         AchievementCategory.resilience, 1);

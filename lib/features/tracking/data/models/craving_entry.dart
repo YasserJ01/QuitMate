@@ -1,7 +1,3 @@
-import 'package:isar/isar.dart';
-
-part 'craving_entry.g.dart';
-
 enum CravingIntensity {
   mild,
   moderate,
@@ -68,47 +64,38 @@ enum CravingOutcome {
   }
 }
 
-@collection
 class CravingEntry {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  late DateTime startTime;
+  int id;
+  String userId;
+  DateTime startTime;
   DateTime? endTime;
-
-  @Enumerated(EnumType.name)
-  late CravingIntensity initialIntensity;
-
-  @Enumerated(EnumType.name)
+  CravingIntensity initialIntensity;
   CravingIntensity? finalIntensity;
-
-  @Enumerated(EnumType.name)
   CravingOutcome? outcome;
-
-  // Triggers
-  List<String> triggers = [];
-
-  // Coping strategies used (link to Feature C)
-  List<String> copingStrategiesUsed = [];
-
-  // Notes
+  List<String> triggers;
+  List<String> copingStrategiesUsed;
   String? notes;
-
-  // Location
   String? location;
-
-  // Metadata
-  late DateTime createdAt;
+  DateTime createdAt;
   DateTime? updatedAt;
 
-  CravingEntry() {
-    createdAt = DateTime.now();
-    startTime = DateTime.now();
-  }
+  CravingEntry({
+    this.id = 0,
+    required this.userId,
+    DateTime? startTime,
+    this.endTime,
+    required this.initialIntensity,
+    this.finalIntensity,
+    this.outcome,
+    this.triggers = const [],
+    this.copingStrategiesUsed = const [],
+    this.notes,
+    this.location,
+    DateTime? createdAt,
+    this.updatedAt,
+  })  : startTime = startTime ?? DateTime.now(),
+        createdAt = createdAt ?? DateTime.now();
 
-  // Computed properties
   int? get durationMinutes {
     if (endTime == null) return null;
     return endTime!.difference(startTime).inMinutes;

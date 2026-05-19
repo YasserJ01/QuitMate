@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../data/models/statistics.dart';
 
 class SavingsCard extends StatelessWidget {
@@ -21,8 +20,8 @@ class SavingsCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppTheme.successColor,
-              AppTheme.successColor.withGreen(200),
+              const Color(0xFF388E3C),
+              const Color(0xFF2E7D32),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

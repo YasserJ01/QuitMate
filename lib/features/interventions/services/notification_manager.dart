@@ -157,13 +157,14 @@ class NotificationManager {
     NotificationType type = NotificationType.encouragement,
     String? payload,
   }) async {
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = type
-      ..title = title
-      ..body = body
-      ..scheduledTime = DateTime.now()
-      ..payload = payload;
+    final n = ScheduledNotification(
+      userId: userId,
+      type: type,
+      title: title,
+      body: body,
+      scheduledTime: DateTime.now(),
+      payload: payload,
+    );
 
     final saved = await _repo.save(n);
     await _push.showImmediate(

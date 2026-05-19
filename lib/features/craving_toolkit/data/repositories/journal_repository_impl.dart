@@ -1,15 +1,14 @@
-import 'package:isar/isar.dart';
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
-
-import '../../../../core/services/database/isar_service.dart';
+import '../../../../core/services/database/app_database.dart' show AppDatabase, JournalEntriesCompanion, DbJournalEntry;
 import '../../domain/entities/journal_entry.dart';
 import '../../domain/repositories/i_journal_repository.dart';
-import '../models/journal_entry_model.dart';
 
 class JournalRepositoryImpl implements IJournalRepository {
+  final AppDatabase db;
   static const _uuid = Uuid();
 
-  Future<Isar> get _db async => await IsarService.instance;
+  JournalRepositoryImpl(this.db);
 
   @override
   Future<List<JournalEntry>> getEntries({
@@ -17,31 +16,21 @@ class JournalRepositoryImpl implements IJournalRepository {
     String? moodFilter,
     int? limit,
   }) async {
-    final isar = await _db;
+    final query = db.select(db.journalEntries)
+      ..where((t) => t.userId.equals(userId))
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
 
-    // Build filter chain without dynamic to avoid Isar type-state runtime errors.
-    QueryBuilder<JournalEntryModel, JournalEntryModel, QAfterFilterCondition>
-        filterQuery;
-
-    if (moodFilter != null) {
-      filterQuery = isar.journalEntryModels
-          .filter()
-          .userIdEqualTo(userId)
-          .and()
-          .moodTagEqualTo(moodFilter);
-    } else {
-      filterQuery = isar.journalEntryModels
-          .filter()
-          .userIdEqualTo(userId);
+    if (limit != null) {
+      query.limit(limit);
     }
 
-    final sortedQuery = filterQuery.sortByCreatedAtDesc();
+    final rows = await query.get();
 
-    final models = limit != null
-        ? await sortedQuery.limit(limit).findAll()
-        : await sortedQuery.findAll();
+    final filtered = moodFilter != null
+        ? rows.where((r) => r.moodTag == moodFilter).toList()
+        : rows;
 
-    return models.map(_toEntity).toList();
+    return filtered.map(_toEntity).toList();
   }
 
   @override
@@ -52,20 +41,20 @@ class JournalRepositoryImpl implements IJournalRepository {
     String? sourceExerciseId,
     String? sourceExerciseName,
   }) async {
-    final isar = await _db;
     final entryId = _uuid.v4();
     final now = DateTime.now().toUtc();
 
-    final model = JournalEntryModel()
-      ..entryId = entryId
-      ..userId = userId
-      ..createdAt = now
-      ..content = content
-      ..moodTag = moodTag
-      ..sourceExerciseId = sourceExerciseId
-      ..sourceExerciseName = sourceExerciseName;
+    final companion = JournalEntriesCompanion(
+      entryId: Value(entryId),
+      userId: Value(userId),
+      createdAt: Value(now),
+      content: Value(content),
+      moodTag: Value(moodTag),
+      sourceExerciseId: Value(sourceExerciseId),
+      sourceExerciseName: Value(sourceExerciseName),
+    );
 
-    await isar.writeTxn(() => isar.journalEntryModels.put(model));
+    await db.into(db.journalEntries).insert(companion);
     return entryId;
   }
 
@@ -75,36 +64,30 @@ class JournalRepositoryImpl implements IJournalRepository {
     required String content,
     String? moodTag,
   }) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.journalEntryModels
-          .filter()
-          .entryIdEqualTo(entryId)
-          .findFirst();
-      if (model != null) {
-        model.content = content;
-        model.moodTag = moodTag;
-        model.updatedAt = DateTime.now().toUtc();
-        await isar.journalEntryModels.put(model);
-      }
-    });
+    final row = await (db.select(db.journalEntries)
+      ..where((t) => t.entryId.equals(entryId))).getSingleOrNull();
+    if (row != null) {
+      await (db.update(db.journalEntries)
+        ..where((t) => t.id.equals(row.id)))
+          .write(JournalEntriesCompanion(
+            content: Value(content),
+            moodTag: Value(moodTag),
+            updatedAt: Value(DateTime.now().toUtc()),
+          ));
+    }
   }
 
   @override
   Future<void> deleteEntry(String entryId) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.journalEntryModels
-          .filter()
-          .entryIdEqualTo(entryId)
-          .findFirst();
-      if (model != null) {
-        await isar.journalEntryModels.delete(model.id);
-      }
-    });
+    final row = await (db.select(db.journalEntries)
+      ..where((t) => t.entryId.equals(entryId))).getSingleOrNull();
+    if (row != null) {
+      await (db.delete(db.journalEntries)
+        ..where((t) => t.id.equals(row.id))).go();
+    }
   }
 
-  JournalEntry _toEntity(JournalEntryModel m) => JournalEntry(
+  JournalEntry _toEntity(DbJournalEntry m) => JournalEntry(
         id: m.entryId,
         userId: m.userId,
         createdAt: m.createdAt,

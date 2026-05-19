@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/services/database/isar_service.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../../interventions/presentation/providers/notification_provider.dart';
+import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 import '../../../onboarding/presentation/screens/welcome_screen.dart';
+import '../../../tracking/presentation/providers/statistics_provider.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
+import '../../../achievements/presentation/providers/achievement_provider.dart';
 
 class ResetProfileScreen extends ConsumerStatefulWidget {
   const ResetProfileScreen({super.key});
@@ -109,11 +113,9 @@ class _ResetProfileScreenState extends ConsumerState<ResetProfileScreen> {
 
     setState(() => _isResetting = true);
     try {
-      // 1. Clear all Isar collections
-      final isar = await IsarService.instance;
-      await isar.writeTxn(() async {
-        await isar.clear();
-      });
+      // 1. Clear all database tables
+      final db = ref.read(databaseProvider);
+      await db.clearAllData();
 
       // 2. Delete all flutter_secure_storage keys
       await const FlutterSecureStorage().deleteAll();
@@ -124,6 +126,16 @@ class _ResetProfileScreenState extends ConsumerState<ResetProfileScreen> {
       if (manager != null) {
         await manager.cancelAll();
       }
+
+      // 4. Invalidate all cached providers so fresh data is loaded
+      //    after the user completes onboarding again.
+      ref.invalidate(statisticsProvider);
+      ref.invalidate(achievementsProvider);
+      ref.invalidate(earnedAchievementsProvider);
+      ref.invalidate(achievementNotifierProvider);
+      ref.invalidate(todaysLogsProvider);
+      ref.invalidate(quickLogProvider);
+      ref.invalidate(onboardingProvider);
 
       if (mounted) {
         // Navigate to WelcomeScreen, removing all previous routes

@@ -35,15 +35,16 @@ class _EditPanicStepsScreenState extends ConsumerState<EditPanicStepsScreen> {
     
     setState(() {
       // Create deep copies of steps to avoid reference issues
-      _steps = plan.panicSteps.map((step) {
-        return PanicStep()
-          ..title = step.title
-          ..description = step.description
-          ..icon = step.icon
-          ..actionType = step.actionType
-          ..contactId = step.contactId
-          ..actionData = step.actionData
-          ..displayOrder = step.displayOrder;
+        _steps = plan.panicSteps.map((step) {
+        return PanicStep(
+          title: step.title,
+          description: step.description,
+          icon: step.icon,
+          actionType: step.actionType,
+          contactId: step.contactId,
+          actionData: step.actionData,
+          displayOrder: step.displayOrder,
+        );
       }).toList();
       _isLoading = false;
     });

@@ -395,12 +395,13 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
   }
 
   Future<void> _logCravingDelayed(BuildContext context) async {
-    final entry = LogEntry()
-      ..userId = (await ref.read(currentUserIdProvider.future)) ?? ''
-      ..type = LogType.cravingDelayed
-      ..triggers = _selectedTriggers
-      ..mood = _selectedMood
-      ..timestamp = DateTime.now().toUtc();
+    final userId = await ref.read(currentUserIdProvider.future);
+    final entry = LogEntry(
+      userId: userId ?? '',
+      type: LogType.cravingDelayed,
+      triggers: _selectedTriggers,
+      mood: _selectedMood,
+    );
 
     final trackingRepo = ref.read(trackingRepositoryProvider);
     await trackingRepo.addLogEntry(entry);
@@ -419,13 +420,14 @@ class _QuickLogSheetState extends ConsumerState<QuickLogSheet> {
   }
 
   Future<void> _logUrgeResisted(BuildContext context) async {
-    final entry = LogEntry()
-      ..userId = (await ref.read(currentUserIdProvider.future)) ?? ''
-      ..type = LogType.copingAction
-      ..triggers = _selectedTriggers
-      ..mood = _selectedMood
-      ..wasResisted = true
-      ..timestamp = DateTime.now().toUtc();
+    final userId = await ref.read(currentUserIdProvider.future);
+    final entry = LogEntry(
+      userId: userId ?? '',
+      type: LogType.copingAction,
+      triggers: _selectedTriggers,
+      mood: _selectedMood,
+      wasResisted: true,
+    );
 
     final trackingRepo = ref.read(trackingRepositoryProvider);
     await trackingRepo.addLogEntry(entry);

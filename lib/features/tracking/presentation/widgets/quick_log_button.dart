@@ -126,10 +126,10 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
     final userId = await ref.read(currentUserIdProvider.future);
     if (userId == null) return;
 
-    final entry = LogEntry()
-      ..userId = userId
-      ..type = LogType.cravingDelayed
-      ..timestamp = DateTime.now().toUtc();
+    final entry = LogEntry(
+      userId: userId,
+      type: LogType.cravingDelayed,
+    );
 
     final repo = ref.read(trackingRepositoryProvider);
     await repo.addLogEntry(entry);

@@ -1,7 +1,3 @@
-import 'package:isar/isar.dart';
-
-part 'log_entry.g.dart';
-
 enum LogType {
   cravingLogged,
   cravingDelayed,
@@ -25,44 +21,41 @@ enum MoodType {
   veryGood,
 }
 
-@collection
 class LogEntry {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late LogType type;
-
-  late DateTime timestamp;
-
-  @Enumerated(EnumType.name)
+  int id;
+  String userId;
+  LogType type;
+  DateTime timestamp;
   MoodType? mood;
-
-  List<String> triggers = [];
-
+  List<String> triggers;
   String? notes;
-
   int? quantity;
-
   int? durationSeconds;
-
   int? intensity;
-
   int? distressRating;
-
   String? location;
-
   bool? wasResisted;
-
-  late DateTime createdAt;
+  DateTime createdAt;
   DateTime? updatedAt;
 
-  LogEntry() {
-    createdAt = DateTime.now().toUtc();
-    timestamp = DateTime.now().toUtc();
-  }
+  LogEntry({
+    this.id = 0,
+    required this.userId,
+    required this.type,
+    DateTime? timestamp,
+    this.mood,
+    this.triggers = const [],
+    this.notes,
+    this.quantity,
+    this.durationSeconds,
+    this.intensity,
+    this.distressRating,
+    this.location,
+    this.wasResisted,
+    DateTime? createdAt,
+    this.updatedAt,
+  })  : timestamp = timestamp ?? DateTime.now().toUtc(),
+        createdAt = createdAt ?? DateTime.now().toUtc();
 
   bool get isToday {
     final now = DateTime.now();
@@ -100,8 +93,6 @@ class LogEntry {
     return '${months[localTimestamp.month - 1]} ${localTimestamp.day}, ${localTimestamp.year}';
   }
 }
-
-// ── Extension methods for LogType display ──────────────────────────────────
 
 extension LogTypeDisplay on LogType {
   String get displayName {
@@ -170,8 +161,6 @@ extension LogTypeDisplay on LogType {
   }
 }
 
-// ── Extension methods for MoodType display ─────────────────────────────────
-
 extension MoodTypeDisplay on MoodType {
   String get displayName {
     switch (this) {
@@ -218,8 +207,6 @@ extension MoodTypeDisplay on MoodType {
     }
   }
 }
-
-// ── Legacy name mapping ───────────────────────────────────────────────────
 
 LogType? logTypeFromLegacyName(String name) {
   const legacyMap = {

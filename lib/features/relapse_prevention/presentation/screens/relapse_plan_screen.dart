@@ -352,11 +352,13 @@ class _RelapsePlanScreenState extends ConsumerState<RelapsePlanScreen> with Sing
                 return;
               }
 
-              final contact = RelapseContact()
-                ..name = nameController.text.trim()
-                ..phoneNumber = phoneController.text.trim().isEmpty ? null : phoneController.text.trim()
-                ..relationship = relationshipController.text.trim().isEmpty ? null : relationshipController.text.trim()
-                ..notes = notesController.text.trim().isEmpty ? null : notesController.text.trim();
+              final contact = RelapseContact(
+                userId: '', // Will be set by notifier
+                name: nameController.text.trim(),
+                phoneNumber: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                relationship: relationshipController.text.trim().isEmpty ? null : relationshipController.text.trim(),
+                notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+              );
 
               ref.read(relapseNotifierProvider.notifier).addContact(contact);
               Navigator.pop(context);

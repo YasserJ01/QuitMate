@@ -78,7 +78,7 @@ class AchievementBadgeCard extends StatelessWidget {
                 if (achievement.id.contains('money') &&
                     achievement.progressValue == 0)
                   Text(
-                    'Add cigarette cost in your profile to track this',
+                    'Your savings grow each smoke-free day',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.orange.shade700,
                       fontSize: 10,

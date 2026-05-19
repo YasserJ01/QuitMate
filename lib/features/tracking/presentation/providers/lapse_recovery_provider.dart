@@ -70,11 +70,11 @@ class LapseRecoveryNotifier extends StateNotifier<LapseRecoveryState> {
       final profileRepo = _ref.read(profileRepositoryProvider);
 
       // 1. Write lapse LogEntry
-      final entry = LogEntry()
-        ..userId = userId
-        ..type = lapseType
-        ..triggers = triggers
-        ..timestamp = DateTime.now().toUtc();
+      final entry = LogEntry(
+        userId: userId,
+        type: lapseType,
+        triggers: triggers,
+      );
 
       await trackingRepo.addLogEntry(entry);
 
@@ -89,11 +89,11 @@ class LapseRecoveryNotifier extends StateNotifier<LapseRecoveryState> {
       }
 
       // 3. Write a lapseRecovery LogEntry to track the recovery event
-      final recoveryEntry = LogEntry()
-        ..userId = userId
-        ..type = LogType.lapseRecovery
-        ..triggers = triggers
-        ..timestamp = DateTime.now().toUtc();
+      final recoveryEntry = LogEntry(
+        userId: userId,
+        type: LogType.lapseRecovery,
+        triggers: triggers,
+      );
       await trackingRepo.addLogEntry(recoveryEntry);
 
       // 4. Invalidate statistics provider

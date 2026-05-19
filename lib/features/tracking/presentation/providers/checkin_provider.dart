@@ -44,30 +44,30 @@ class CheckInNotifier extends AutoDisposeNotifier<void> {
     );
 
     // Write primary check-in event
-    final entry = LogEntry()
-      ..userId = userId
-      ..type = LogType.dailyCheckin
-      ..timestamp = DateTime.now().toUtc()
-      ..mood = mood
-      ..distressRating = distressRating
-      ..wasResisted = actedOnUrge == false;
+    final entry = LogEntry(
+      userId: userId,
+      type: LogType.dailyCheckin,
+      mood: mood,
+      distressRating: distressRating,
+      wasResisted: actedOnUrge == false,
+    );
 
     await trackingRepo.addLogEntry(entry);
 
     // Write secondary events
     if (smokedToday == true) {
-      final smokeEntry = LogEntry()
-        ..userId = userId
-        ..type = LogType.cigaretteSmoked
-        ..timestamp = DateTime.now().toUtc();
+      final smokeEntry = LogEntry(
+        userId: userId,
+        type: LogType.cigaretteSmoked,
+      );
       await trackingRepo.addLogEntry(smokeEntry);
     }
 
     if (hadCraving) {
-      final cravingEntry = LogEntry()
-        ..userId = userId
-        ..type = LogType.cravingLogged
-        ..timestamp = DateTime.now().toUtc();
+      final cravingEntry = LogEntry(
+        userId: userId,
+        type: LogType.cravingLogged,
+      );
       await trackingRepo.addLogEntry(cravingEntry);
     }
 

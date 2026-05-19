@@ -1,23 +1,27 @@
-import 'package:isar/isar.dart';
-
-part 'weekly_review_model.g.dart';
-
-@collection
 class WeeklyReviewModel {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Index()
-  late DateTime weekStart; // Monday 00:00 UTC of the reviewed week
-
-  late int checkInsCount;
-  late int toolkitSessionsCount;
-  late int cravingsResisted;
-  late int lapseEvents;
+  int id;
+  String userId;
+  DateTime weekStart;
+  int checkInsCount;
+  int toolkitSessionsCount;
+  int cravingsResisted;
+  int lapseEvents;
   String? topTrigger;
   String? mostUsedExercise;
   String? motivationalSummary;
-  late DateTime generatedAt;
+  DateTime generatedAt;
+
+  WeeklyReviewModel({
+    this.id = 0,
+    required this.userId,
+    required this.weekStart,
+    required this.checkInsCount,
+    required this.toolkitSessionsCount,
+    required this.cravingsResisted,
+    required this.lapseEvents,
+    this.topTrigger,
+    this.mostUsedExercise,
+    this.motivationalSummary,
+    DateTime? generatedAt,
+  }) : generatedAt = generatedAt ?? DateTime.now();
 }

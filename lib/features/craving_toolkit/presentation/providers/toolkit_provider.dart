@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/toolkit_models.dart';
 import '../../data/repositories/toolkit_repository.dart';
 import '../../data/repositories/toolkit_repository_impl.dart';
@@ -11,11 +12,13 @@ import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 // ─── Repository providers ──────────────────────────────────────────────────
 
 final toolkitRepositoryProvider = Provider<ToolkitRepository>((ref) {
-  return ToolkitRepository();
+  final db = ref.watch(databaseProvider);
+  return ToolkitRepository(db);
 });
 
 final toolkitExerciseRepoProvider = Provider<IToolkitRepository>((ref) {
-  return ToolkitRepositoryImpl();
+  final db = ref.watch(databaseProvider);
+  return ToolkitRepositoryImpl(db);
 });
 
 // ─── Exercise catalogue (mode-filtered) ────────────────────────────────────
@@ -444,9 +447,7 @@ class CbtSessionNotifier extends StateNotifier<CbtSessionState> {
     : super(CbtSessionState(technique: technique));
 
   Future<void> start() async {
-    final session = CbtSession()
-      ..userId = _userId
-      ..technique = state.technique;
+    final session = CbtSession(userId: _userId, technique: state.technique);
 
     final savedSession = await _repository.addCbtSession(session);
 
@@ -554,9 +555,7 @@ class GroundingSessionNotifier extends StateNotifier<GroundingSessionState> {
   ) : super(GroundingSessionState(exercise: exercise));
 
   Future<void> start() async {
-    final session = GroundingSession()
-      ..userId = _userId
-      ..exercise = state.exercise;
+    final session = GroundingSession(userId: _userId, exercise: state.exercise);
 
     final savedSession = await _repository.addGroundingSession(session);
 

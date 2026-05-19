@@ -6,7 +6,8 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'app.dart';
-import 'core/services/database/isar_service.dart';
+import 'core/services/database/app_database.dart';
+import 'core/services/database/database_provider.dart';
 import 'features/interventions/services/push_notification_service.dart';
 import 'features/craving_toolkit/data/datasources/toolkit_seed_service.dart';
 
@@ -22,19 +23,22 @@ Future<void> main() async {
   // ── 2. Timezone (required by flutter_local_notifications zonedSchedule) ───
   await _initTimezone();
 
-  // ── 3. Isar database ───────────────────────────────────────────────────────
-  await IsarService.instance;
+  // ── 3. Drift database ─────────────────────────────────────────────────────
+  final database = await AppDatabase.open();
 
   // ── 3b. Seed toolkit exercise catalogue (idempotent — safe every launch) ──
-  await ToolkitSeedService().seedIfNeeded();
+  await ToolkitSeedService(database).seedIfNeeded();
 
   // ── 4. Local notification plugin (channel creation + listener wiring) ─────
   await PushNotificationService().initialize();
 
   // ── 5. Run ─────────────────────────────────────────────────────────────────
   runApp(
-    const ProviderScope(
-      child: QuitMateApp(),
+    ProviderScope(
+      overrides: [
+        databaseProvider.overrideWithValue(database),
+      ],
+      child: const QuitMateApp(),
     ),
   );
 }

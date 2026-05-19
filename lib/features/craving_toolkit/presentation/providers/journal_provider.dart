@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 
 import '../../data/repositories/journal_repository_impl.dart';
 import '../../domain/entities/journal_entry.dart';
@@ -8,7 +9,8 @@ import '../../../tracking/presentation/providers/tracking_provider.dart';
 // ─── Repository ────────────────────────────────────────────────────────────
 
 final journalRepositoryProvider = Provider<IJournalRepository>((ref) {
-  return JournalRepositoryImpl();
+  final db = ref.watch(databaseProvider);
+  return JournalRepositoryImpl(db);
 });
 
 // ─── Journal list (optionally filtered by mood) ────────────────────────────

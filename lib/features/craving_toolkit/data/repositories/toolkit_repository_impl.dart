@@ -1,44 +1,33 @@
-import 'package:isar/isar.dart';
-
-import '../../../../core/services/database/isar_service.dart';
+import 'package:drift/drift.dart' show Value, OrderingTerm, Expression;
+import '../../../../core/services/database/app_database.dart' as drift_db;
 import '../../domain/entities/toolkit_exercise.dart';
 import '../../domain/entities/toolkit_session.dart';
 import '../../domain/repositories/i_toolkit_repository.dart';
-import '../models/toolkit_exercise_model.dart';
-import '../models/toolkit_session_model.dart';
 
 class ToolkitRepositoryImpl implements IToolkitRepository {
-  Future<Isar> get _db async => await IsarService.instance;
+  final drift_db.AppDatabase db;
 
-  // ── Exercise catalogue ──────────────────────────────────────────────────
+  ToolkitRepositoryImpl(this.db);
 
   @override
   Future<List<ToolkitExercise>> getAllExercises() async {
-    final isar = await _db;
-    final models = await isar.toolkitExerciseModels.where().findAll();
-    return models.map(_toEntity).toList();
+    final rows = await db.select(db.toolkitExercises).get();
+    return rows.map(_toEntity).toList();
   }
 
   @override
   Future<List<ToolkitExercise>> getExercisesForMode(String mode) async {
-    final isar = await _db;
-    final models = await isar.toolkitExerciseModels
-        .filter()
-        .isSharedBothModesEqualTo(true)
-        .or()
-        .modeFilterEqualTo(mode)
-        .findAll();
-    return models.map(_toEntity).toList();
+    final rows = await (db.select(db.toolkitExercises)
+      ..where((t) => Expression.or([t.isSharedBothModes.equals(true), t.modeFilter.equals(mode)]))).get();
+    return rows.map(_toEntity).toList();
   }
 
   @override
-  Stream<List<ToolkitExercise>> watchFavorites(String mode) async* {
-    final isar = await _db;
-    yield* isar.toolkitExerciseModels
-        .filter()
-        .isFavoriteEqualTo(true)
-        .watch(fireImmediately: true)
-        .map((models) => models
+  Stream<List<ToolkitExercise>> watchFavorites(String mode) {
+    return (db.select(db.toolkitExercises)
+      ..where((t) => t.isFavorite.equals(true)))
+        .watch()
+        .map((rows) => rows
             .where((m) => m.isSharedBothModes || m.modeFilter == mode)
             .map(_toEntity)
             .toList());
@@ -46,47 +35,36 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
 
   @override
   Future<List<ToolkitExercise>> getRecentExercises({int limit = 3}) async {
-    final isar = await _db;
-    final models = await isar.toolkitExerciseModels
-        .filter()
-        .lastUsedAtIsNotNull()
-        .sortByLastUsedAtDesc()
-        .limit(limit)
-        .findAll();
-    return models.map(_toEntity).toList();
+    final rows = await (db.select(db.toolkitExercises)
+      ..where((t) => t.lastUsedAt.isNotNull())
+      ..orderBy([(t) => OrderingTerm.desc(t.lastUsedAt)])
+      ..limit(limit)).get();
+    return rows.map(_toEntity).toList();
   }
 
   @override
   Future<void> toggleFavorite(String exerciseId) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.toolkitExerciseModels
-          .filter()
-          .exerciseIdEqualTo(exerciseId)
-          .findFirst();
-      if (model != null) {
-        model.isFavorite = !model.isFavorite;
-        await isar.toolkitExerciseModels.put(model);
-      }
-    });
+    final row = await (db.select(db.toolkitExercises)
+        ..where((t) => t.exerciseId.equals(exerciseId))).getSingleOrNull();
+    if (row != null) {
+      await (db.update(db.toolkitExercises)
+          ..where((t) => t.id.equals(row.id))).write(drift_db.ToolkitExercisesCompanion(
+        isFavorite: Value(!row.isFavorite),
+      ));
+    }
   }
 
   @override
   Future<void> markExerciseUsed(String exerciseId) async {
-    final isar = await _db;
-    await isar.writeTxn(() async {
-      final model = await isar.toolkitExerciseModels
-          .filter()
-          .exerciseIdEqualTo(exerciseId)
-          .findFirst();
-      if (model != null) {
-        model.lastUsedAt = DateTime.now().toUtc();
-        await isar.toolkitExerciseModels.put(model);
-      }
-    });
+    final row = await (db.select(db.toolkitExercises)
+        ..where((t) => t.exerciseId.equals(exerciseId))).getSingleOrNull();
+    if (row != null) {
+      await (db.update(db.toolkitExercises)
+          ..where((t) => t.id.equals(row.id))).write(drift_db.ToolkitExercisesCompanion(
+        lastUsedAt: Value(DateTime.now().toUtc()),
+      ));
+    }
   }
-
-  // ── Sessions ────────────────────────────────────────────────────────────
 
   @override
   Future<String> startSession({
@@ -94,22 +72,20 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     required String userId,
     required String mode,
   }) async {
-    final isar = await _db;
-    final exercise = await isar.toolkitExerciseModels
-        .filter()
-        .exerciseIdEqualTo(exerciseId)
-        .findFirst();
+    final exercise = await (db.select(db.toolkitExercises)
+        ..where((t) => t.exerciseId.equals(exerciseId))).getSingleOrNull();
 
-    final model = ToolkitSessionModel()
-      ..userId = userId
-      ..exerciseId = exerciseId
-      ..exerciseName = exercise?.name ?? 'Unknown'
-      ..exerciseCategory = exercise?.category ?? 'unknown'
-      ..startedAt = DateTime.now().toUtc()
-      ..mode = mode;
+    final companion = drift_db.ToolkitSessionsCompanion(
+      userId: Value(userId),
+      exerciseId: Value(exerciseId),
+      exerciseName: Value(exercise?.name ?? 'Unknown'),
+      exerciseCategory: Value(exercise?.category ?? 'unknown'),
+      startedAt: Value(DateTime.now().toUtc()),
+      mode: Value(mode),
+    );
 
-    await isar.writeTxn(() => isar.toolkitSessionModels.put(model));
-    return model.id.toString();
+    final id = await db.into(db.toolkitSessions).insert(companion);
+    return id.toString();
   }
 
   @override
@@ -117,17 +93,13 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     required String sessionId,
     required bool completed,
   }) async {
-    final isar = await _db;
     final id = int.tryParse(sessionId);
     if (id == null) return;
 
-    await isar.writeTxn(() async {
-      final model = await isar.toolkitSessionModels.get(id);
-      if (model != null) {
-        model.completedAt = completed ? DateTime.now().toUtc() : null;
-        await isar.toolkitSessionModels.put(model);
-      }
-    });
+    await (db.update(db.toolkitSessions)
+        ..where((t) => t.id.equals(id))).write(drift_db.ToolkitSessionsCompanion(
+      completedAt: completed ? Value(DateTime.now().toUtc()) : const Value(null),
+    ));
   }
 
   @override
@@ -135,17 +107,13 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     required String sessionId,
     required int rating,
   }) async {
-    final isar = await _db;
     final id = int.tryParse(sessionId);
     if (id == null) return;
 
-    await isar.writeTxn(() async {
-      final model = await isar.toolkitSessionModels.get(id);
-      if (model != null) {
-        model.feedbackRating = rating;
-        await isar.toolkitSessionModels.put(model);
-      }
-    });
+    await (db.update(db.toolkitSessions)
+        ..where((t) => t.id.equals(id))).write(drift_db.ToolkitSessionsCompanion(
+      feedbackRating: Value(rating),
+    ));
   }
 
   @override
@@ -154,23 +122,17 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     DateTime? since,
     int? limit,
   }) async {
-    final isar = await _db;
-    // Use dynamic to bypass Isar's type-state QueryBuilder — the generic
-    // parameter changes after .sortBy*() / .filter() / .limit().
-    dynamic query = isar.toolkitSessionModels
-        .filter()
-        .userIdEqualTo(userId)
-        .sortByStartedAtDesc();
-
-    if (since != null) {
-      query = query.filter().startedAtGreaterThan(since);
-    }
+    final q = db.select(db.toolkitSessions);
+    q.where((t) => t.userId.equals(userId));
+    q.orderBy([(t) => OrderingTerm.desc(t.startedAt)]);
     if (limit != null) {
-      query = query.limit(limit);
+      q.limit(limit);
     }
-
-    final models = await query.findAll();
-    return models.map(_sessionToEntity).toList();
+    var rows = await q.get();
+    if (since != null) {
+      rows = rows.where((r) => !r.startedAt.isBefore(since)).toList();
+    }
+    return rows.map(_sessionToEntity).toList();
   }
 
   @override
@@ -178,15 +140,13 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     required String userId,
     int days = 7,
   }) async {
-    final isar = await _db;
     final since = DateTime.now().toUtc().subtract(Duration(days: days));
-    final models = await isar.toolkitSessionModels
-        .filter()
-        .userIdEqualTo(userId)
-        .startedAtGreaterThan(since)
-        .sortByStartedAtDesc()
-        .findAll();
-    return models.map(_sessionToEntity).toList();
+    final q = db.select(db.toolkitSessions);
+    q.where((t) => t.userId.equals(userId));
+    q.orderBy([(t) => OrderingTerm.desc(t.startedAt)]);
+    var rows = await q.get();
+    rows = rows.where((r) => !r.startedAt.isBefore(since)).toList();
+    return rows.map(_sessionToEntity).toList();
   }
 
   @override
@@ -196,10 +156,8 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     final sessions = await getRecentSessions(userId: userId, days: 7);
 
     final completedSessions = sessions.where((s) => s.wasCompleted).toList();
-    final exerciseNames =
-        sessions.map((s) => s.exerciseName).toSet().toList();
+    final exerciseNames = sessions.map((s) => s.exerciseName).toSet().toList();
 
-    // Most used exercise (by count)
     final exerciseCounts = <String, int>{};
     for (final session in sessions) {
       exerciseCounts[session.exerciseName] =
@@ -214,7 +172,6 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
       }
     }
 
-    // Average feedback rating
     double avgRating = 0;
     final ratedSessions =
         completedSessions.where((s) => s.feedbackRating != null).toList();
@@ -234,9 +191,7 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
     };
   }
 
-  // ── Mappers ─────────────────────────────────────────────────────────────
-
-  ToolkitExercise _toEntity(ToolkitExerciseModel m) => ToolkitExercise(
+  ToolkitExercise _toEntity(drift_db.DbToolkitExercise m) => ToolkitExercise(
         id: m.exerciseId,
         name: m.name,
         category: ExerciseCategory.values.firstWhere(
@@ -253,7 +208,7 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
         modeSpecificNote: m.modeSpecificNote,
       );
 
-  ToolkitSession _sessionToEntity(ToolkitSessionModel m) => ToolkitSession(
+  ToolkitSession _sessionToEntity(drift_db.DbToolkitSession m) => ToolkitSession(
         id: m.id.toString(),
         exerciseId: m.exerciseId,
         exerciseName: m.exerciseName,

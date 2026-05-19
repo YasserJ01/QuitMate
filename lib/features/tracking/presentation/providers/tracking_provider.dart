@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/log_entry.dart';
 import '../../data/models/craving_entry.dart';
 import '../../data/repositories/tracking_repository.dart';
@@ -6,7 +7,8 @@ import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 
 // Repository provider
 final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
-  return TrackingRepository();
+  final db = ref.watch(databaseProvider);
+  return TrackingRepository(db);
 });
 
 // Current user ID provider
@@ -144,12 +146,13 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
-      final entry = LogEntry()
-        ..userId = _userId
-        ..type = LogType.cigaretteSmoked
-        ..quantity = quantity
-        ..triggers = triggers ?? []
-        ..mood = mood;
+      final entry = LogEntry(
+        userId: _userId,
+        type: LogType.cigaretteSmoked,
+        quantity: quantity,
+        triggers: triggers ?? [],
+        mood: mood,
+      );
 
       final saved = await _repository.addLogEntry(entry);
 
@@ -180,12 +183,13 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
-      final entry = LogEntry()
-        ..userId = _userId
-        ..type = LogType.urgeEpisode
-        ..triggers = triggers ?? []
-        ..mood = mood
-        ..durationSeconds = durationSeconds;
+      final entry = LogEntry(
+        userId: _userId,
+        type: LogType.urgeEpisode,
+        triggers: triggers ?? [],
+        mood: mood,
+        durationSeconds: durationSeconds,
+      );
 
       final saved = await _repository.addLogEntry(entry);
 
@@ -215,11 +219,12 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       if (!mounted) return false;
       state = state.copyWith(isLogging: true, error: null);
 
-      final entry = LogEntry()
-        ..userId = _userId
-        ..type = LogType.cravingLogged
-        ..intensity = intensity.value
-        ..triggers = triggers ?? [];
+      final entry = LogEntry(
+        userId: _userId,
+        type: LogType.cravingLogged,
+        intensity: intensity.value,
+        triggers: triggers ?? [],
+      );
 
       await _repository.addLogEntry(entry);
 
@@ -243,10 +248,11 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
     List<String>? triggers,
   }) async {
     try {
-      final entry = CravingEntry()
-        ..userId = _userId
-        ..initialIntensity = intensity
-        ..triggers = triggers ?? [];
+      final entry = CravingEntry(
+        userId: _userId,
+        initialIntensity: intensity,
+        triggers: triggers ?? [],
+      );
 
       return await _repository.addCravingEntry(entry);
     } catch (e) {

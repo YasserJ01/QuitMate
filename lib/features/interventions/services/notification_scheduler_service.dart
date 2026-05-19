@@ -254,37 +254,46 @@ class NotificationSchedulerService {
     required DateTime scheduledTime,
     required Statistics stats,
   }) async {
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = type
-      ..scheduledTime = scheduledTime;
+    final String title;
+    final String body;
+    final String? payload;
+    final int? relatedStreakDays;
+    final int? relatedMoneySaved;
 
     if (type == NotificationType.microChallenge) {
       final challenge = NotificationContent.randomMicroChallenge();
-      n
-        ..title = '⚡ ${challenge.title}'
-        ..body = challenge.description
-        ..payload = _payload({
-          'type': 'micro_challenge',
-          'action': challenge.actionType,
-        });
+      title = '⚡ ${challenge.title}';
+      body = challenge.description;
+      payload = _payload({
+        'type': 'micro_challenge',
+        'action': challenge.actionType,
+      });
+      relatedStreakDays = null;
+      relatedMoneySaved = null;
     } else {
-      // Use mode-specific templates when available
       final prefs = await _repo.getPreferences(userId);
       final template = NotificationContent.randomTemplateForMode(
         type,
         prefs.userMode,
       );
       final data = _userData(stats);
-      n
-        ..title = template.formatTitle(data)
-        ..body = template.formatBody(data)
-        ..payload = _payload({'type': type.name})
-        ..relatedStreakDays = data['days'] as int?
-        ..relatedMoneySaved = data['money'] as int?;
+      title = template.formatTitle(data);
+      body = template.formatBody(data);
+      payload = _payload({'type': type.name});
+      relatedStreakDays = data['days'] as int?;
+      relatedMoneySaved = data['money'] as int?;
     }
 
-    return n;
+    return ScheduledNotification(
+      userId: userId,
+      type: type,
+      title: title,
+      body: body,
+      scheduledTime: scheduledTime,
+      payload: payload,
+      relatedStreakDays: relatedStreakDays,
+      relatedMoneySaved: relatedMoneySaved,
+    );
   }
 
   Map<String, dynamic> _userData(Statistics stats) => {
@@ -305,14 +314,15 @@ class NotificationSchedulerService {
     if (!prefs.notificationsEnabled || !prefs.cravingTipsEnabled) return;
 
     final scheduledTime = DateTime.now().add(const Duration(minutes: 30));
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = NotificationType.cravingTip
-      ..scheduledTime = scheduledTime
-      ..title = 'You can do this! 💪'
-      ..body =
-          "You recognised a craving — that's a huge step. Want to try a breathing exercise?"
-      ..payload = _payload({'type': 'craving_support', 'action': 'open_toolkit'});
+    final n = ScheduledNotification(
+      userId: userId,
+      type: NotificationType.cravingTip,
+      scheduledTime: scheduledTime,
+      title: 'You can do this! 💪',
+      body:
+          "You recognised a craving — that's a huge step. Want to try a breathing exercise?",
+      payload: _payload({'type': 'craving_support', 'action': 'open_toolkit'}),
+    );
 
     final saved = await _repo.save(n);
     await _push.scheduleNotification(
@@ -329,13 +339,14 @@ class NotificationSchedulerService {
     final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled || !prefs.encouragementEnabled) return;
 
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = NotificationType.encouragement
-      ..scheduledTime = DateTime.now()
-      ..title = 'Victory! 🎉'
-      ..body = "You just proved you're stronger than the craving. Amazing!"
-      ..payload = _payload({'type': 'celebration'});
+    final n = ScheduledNotification(
+      userId: userId,
+      type: NotificationType.encouragement,
+      scheduledTime: DateTime.now(),
+      title: 'Victory! 🎉',
+      body: "You just proved you're stronger than the craving. Amazing!",
+      payload: _payload({'type': 'celebration'}),
+    );
 
     final saved = await _repo.save(n);
     await _push.showImmediate(
@@ -354,14 +365,15 @@ class NotificationSchedulerService {
 
     if (!_milestones.contains(streakDays)) return;
 
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = NotificationType.milestone
-      ..scheduledTime = DateTime.now()
-      ..title = '🎉 $streakDays day milestone!'
-      ..body = _milestoneMessage(streakDays)
-      ..relatedStreakDays = streakDays
-      ..payload = _payload({'type': 'milestone', 'days': streakDays});
+    final n = ScheduledNotification(
+      userId: userId,
+      type: NotificationType.milestone,
+      scheduledTime: DateTime.now(),
+      title: '🎉 $streakDays day milestone!',
+      body: _milestoneMessage(streakDays),
+      relatedStreakDays: streakDays,
+      payload: _payload({'type': 'milestone', 'days': streakDays}),
+    );
 
     final saved = await _repo.save(n);
     await _push.showImmediate(
@@ -382,13 +394,14 @@ class NotificationSchedulerService {
     final prefs = await _repo.getPreferences(userId);
     if (!prefs.notificationsEnabled) return;
 
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = NotificationType.dailyCheckIn
-      ..scheduledTime = DateTime.now()
-      ..title = 'We miss you! 👋'
-      ..body = "How are you doing? Check in to keep your progress safe."
-      ..payload = _payload({'type': 'check_in_reminder'});
+    final n = ScheduledNotification(
+      userId: userId,
+      type: NotificationType.dailyCheckIn,
+      scheduledTime: DateTime.now(),
+      title: 'We miss you! 👋',
+      body: "How are you doing? Check in to keep your progress safe.",
+      payload: _payload({'type': 'check_in_reminder'}),
+    );
 
     final saved = await _repo.save(n);
     await _push.showImmediate(
@@ -413,14 +426,15 @@ class NotificationSchedulerService {
     final oneDayBefore = quitDate.subtract(const Duration(days: 1));
 
     if (threeDaysBefore.isAfter(DateTime.now())) {
-      final n = ScheduledNotification()
-        ..userId = userId
-        ..type = NotificationType.milestone
-        ..scheduledTime = threeDaysBefore
-        ..title = '3 days until your quit date 🗓️'
-        ..body =
-            'Getting ready? Remove cigarettes, tell a friend, prep your toolkit.'
-        ..payload = _payload({'type': 'quit_prep', 'days': '3'});
+      final n = ScheduledNotification(
+        userId: userId,
+        type: NotificationType.milestone,
+        scheduledTime: threeDaysBefore,
+        title: '3 days until your quit date 🗓️',
+        body:
+            'Getting ready? Remove cigarettes, tell a friend, prep your toolkit.',
+        payload: _payload({'type': 'quit_prep', 'days': '3'}),
+      );
 
       final saved = await _repo.save(n);
       await _push.scheduleNotification(
@@ -433,14 +447,15 @@ class NotificationSchedulerService {
     }
 
     if (oneDayBefore.isAfter(DateTime.now())) {
-      final n = ScheduledNotification()
-        ..userId = userId
-        ..type = NotificationType.milestone
-        ..scheduledTime = oneDayBefore
-        ..title = 'Tomorrow is your quit day 🌟'
-        ..body =
-            "You have got everything you need. We will be here with you."
-        ..payload = _payload({'type': 'quit_prep', 'days': '1'});
+      final n = ScheduledNotification(
+        userId: userId,
+        type: NotificationType.milestone,
+        scheduledTime: oneDayBefore,
+        title: 'Tomorrow is your quit day 🌟',
+        body:
+            "You have got everything you need. We will be here with you.",
+        payload: _payload({'type': 'quit_prep', 'days': '1'}),
+      );
 
       final saved = await _repo.save(n);
       await _push.scheduleNotification(
@@ -468,14 +483,15 @@ class NotificationSchedulerService {
       scheduledTime = scheduledTime.add(const Duration(days: 1));
     }
 
-    final n = ScheduledNotification()
-      ..userId = userId
-      ..type = NotificationType.cravingTip
-      ..scheduledTime = scheduledTime
-      ..title = 'Wind-down time 🌙'
-      ..body =
-          'Consider a device-free wind-down routine. Your environment shapes your habits.'
-      ..payload = _payload({'type': 'bedtime_reminder'});
+    final n = ScheduledNotification(
+      userId: userId,
+      type: NotificationType.cravingTip,
+      scheduledTime: scheduledTime,
+      title: 'Wind-down time 🌙',
+      body:
+          'Consider a device-free wind-down routine. Your environment shapes your habits.',
+      payload: _payload({'type': 'bedtime_reminder'}),
+    );
 
     final saved = await _repo.save(n);
     await _push.scheduleNotification(
@@ -501,14 +517,15 @@ class NotificationSchedulerService {
       if (t.isBefore(now)) t = t.add(const Duration(days: 1));
       if (prefs.isInQuietHours(t)) continue;
 
-      final n = ScheduledNotification()
-        ..userId = userId
-        ..type = NotificationType.cravingTip
-        ..scheduledTime = t
-        ..title = 'Stay strong 💪'
-        ..body =
-            "This is typically a challenging time. Try a breathing exercise if needed."
-        ..payload = _payload({'type': 'preventive', 'action': 'open_toolkit'});
+      final n = ScheduledNotification(
+        userId: userId,
+        type: NotificationType.cravingTip,
+        scheduledTime: t,
+        title: 'Stay strong 💪',
+        body:
+            "This is typically a challenging time. Try a breathing exercise if needed.",
+        payload: _payload({'type': 'preventive', 'action': 'open_toolkit'}),
+      );
 
       final saved = await _repo.save(n);
       await _push.scheduleNotification(

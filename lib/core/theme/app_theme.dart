@@ -161,13 +161,135 @@ class AppTheme {
     );
   }
 
-  // Dark Theme (for future)
+  // Dark Theme
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.dark,
+        primary: const Color(0xFF8B83FF),
+        secondary: const Color(0xFF66BB6A),
+        error: const Color(0xFFF87171),
+        surface: const Color(0xFF1A1D27),
+      ),
+      scaffoldBackgroundColor: const Color(0xFF0F1117),
+
+      // AppBar
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: Color(0xFFF8F9FC)),
+        titleTextStyle: TextStyle(
+          color: Color(0xFFF8F9FC),
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+
+      // Card
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1A1D27),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF2D3142), width: 1),
+        ),
+      ),
+
+      // ElevatedButton
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B83FF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+
+      // OutlinedButton
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF8B83FF),
+          side: const BorderSide(color: Color(0xFF8B83FF), width: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+
+      // InputDecoration
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF1A1D27),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2D3142)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2D3142)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF8B83FF), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFF87171), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+
+      // Text Theme
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFFF8F9FC),
+        ),
+        displayMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFFF8F9FC),
+        ),
+        displaySmall: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFF8F9FC),
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFF8F9FC),
+        ),
+        titleLarge: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFF8F9FC),
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          color: Color(0xFFF8F9FC),
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          color: Color(0xFF9CA3AF),
+        ),
       ),
     );
   }
