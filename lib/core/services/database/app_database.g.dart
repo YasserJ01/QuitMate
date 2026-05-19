@@ -14471,6 +14471,738 @@ class LapseRecoverySessionsCompanion
   }
 }
 
+class $CopingVictoriesTable extends CopingVictories
+    with TableInfo<$CopingVictoriesTable, DbCopingVictory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CopingVictoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _intensityBeforeMeta = const VerificationMeta(
+    'intensityBefore',
+  );
+  @override
+  late final GeneratedColumn<int> intensityBefore = GeneratedColumn<int>(
+    'intensity_before',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _intensityAfterMeta = const VerificationMeta(
+    'intensityAfter',
+  );
+  @override
+  late final GeneratedColumn<int> intensityAfter = GeneratedColumn<int>(
+    'intensity_after',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _moodAfterMeta = const VerificationMeta(
+    'moodAfter',
+  );
+  @override
+  late final GeneratedColumn<String> moodAfter = GeneratedColumn<String>(
+    'mood_after',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _strategyTypeMeta = const VerificationMeta(
+    'strategyType',
+  );
+  @override
+  late final GeneratedColumn<String> strategyType = GeneratedColumn<String>(
+    'strategy_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _strategyValueMeta = const VerificationMeta(
+    'strategyValue',
+  );
+  @override
+  late final GeneratedColumn<String> strategyValue = GeneratedColumn<String>(
+    'strategy_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customStrategyMeta = const VerificationMeta(
+    'customStrategy',
+  );
+  @override
+  late final GeneratedColumn<String> customStrategy = GeneratedColumn<String>(
+    'custom_strategy',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contactNameMeta = const VerificationMeta(
+    'contactName',
+  );
+  @override
+  late final GeneratedColumn<String> contactName = GeneratedColumn<String>(
+    'contact_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contactPhoneMeta = const VerificationMeta(
+    'contactPhone',
+  );
+  @override
+  late final GeneratedColumn<String> contactPhone = GeneratedColumn<String>(
+    'contact_phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    userId,
+    timestamp,
+    intensityBefore,
+    intensityAfter,
+    moodAfter,
+    strategyType,
+    strategyValue,
+    customStrategy,
+    contactName,
+    contactPhone,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'coping_victories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbCopingVictory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('intensity_before')) {
+      context.handle(
+        _intensityBeforeMeta,
+        intensityBefore.isAcceptableOrUnknown(
+          data['intensity_before']!,
+          _intensityBeforeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_intensityBeforeMeta);
+    }
+    if (data.containsKey('intensity_after')) {
+      context.handle(
+        _intensityAfterMeta,
+        intensityAfter.isAcceptableOrUnknown(
+          data['intensity_after']!,
+          _intensityAfterMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_intensityAfterMeta);
+    }
+    if (data.containsKey('mood_after')) {
+      context.handle(
+        _moodAfterMeta,
+        moodAfter.isAcceptableOrUnknown(data['mood_after']!, _moodAfterMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_moodAfterMeta);
+    }
+    if (data.containsKey('strategy_type')) {
+      context.handle(
+        _strategyTypeMeta,
+        strategyType.isAcceptableOrUnknown(
+          data['strategy_type']!,
+          _strategyTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_strategyTypeMeta);
+    }
+    if (data.containsKey('strategy_value')) {
+      context.handle(
+        _strategyValueMeta,
+        strategyValue.isAcceptableOrUnknown(
+          data['strategy_value']!,
+          _strategyValueMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_strategyValueMeta);
+    }
+    if (data.containsKey('custom_strategy')) {
+      context.handle(
+        _customStrategyMeta,
+        customStrategy.isAcceptableOrUnknown(
+          data['custom_strategy']!,
+          _customStrategyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('contact_name')) {
+      context.handle(
+        _contactNameMeta,
+        contactName.isAcceptableOrUnknown(
+          data['contact_name']!,
+          _contactNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('contact_phone')) {
+      context.handle(
+        _contactPhoneMeta,
+        contactPhone.isAcceptableOrUnknown(
+          data['contact_phone']!,
+          _contactPhoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbCopingVictory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbCopingVictory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      intensityBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}intensity_before'],
+      )!,
+      intensityAfter: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}intensity_after'],
+      )!,
+      moodAfter: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mood_after'],
+      )!,
+      strategyType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}strategy_type'],
+      )!,
+      strategyValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}strategy_value'],
+      )!,
+      customStrategy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_strategy'],
+      ),
+      contactName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_name'],
+      ),
+      contactPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_phone'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CopingVictoriesTable createAlias(String alias) {
+    return $CopingVictoriesTable(attachedDatabase, alias);
+  }
+}
+
+class DbCopingVictory extends DataClass implements Insertable<DbCopingVictory> {
+  final int id;
+  final String userId;
+  final DateTime timestamp;
+  final int intensityBefore;
+  final int intensityAfter;
+  final String moodAfter;
+  final String strategyType;
+  final String strategyValue;
+  final String? customStrategy;
+  final String? contactName;
+  final String? contactPhone;
+  final DateTime createdAt;
+  const DbCopingVictory({
+    required this.id,
+    required this.userId,
+    required this.timestamp,
+    required this.intensityBefore,
+    required this.intensityAfter,
+    required this.moodAfter,
+    required this.strategyType,
+    required this.strategyValue,
+    this.customStrategy,
+    this.contactName,
+    this.contactPhone,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['user_id'] = Variable<String>(userId);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    map['intensity_before'] = Variable<int>(intensityBefore);
+    map['intensity_after'] = Variable<int>(intensityAfter);
+    map['mood_after'] = Variable<String>(moodAfter);
+    map['strategy_type'] = Variable<String>(strategyType);
+    map['strategy_value'] = Variable<String>(strategyValue);
+    if (!nullToAbsent || customStrategy != null) {
+      map['custom_strategy'] = Variable<String>(customStrategy);
+    }
+    if (!nullToAbsent || contactName != null) {
+      map['contact_name'] = Variable<String>(contactName);
+    }
+    if (!nullToAbsent || contactPhone != null) {
+      map['contact_phone'] = Variable<String>(contactPhone);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CopingVictoriesCompanion toCompanion(bool nullToAbsent) {
+    return CopingVictoriesCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      timestamp: Value(timestamp),
+      intensityBefore: Value(intensityBefore),
+      intensityAfter: Value(intensityAfter),
+      moodAfter: Value(moodAfter),
+      strategyType: Value(strategyType),
+      strategyValue: Value(strategyValue),
+      customStrategy: customStrategy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customStrategy),
+      contactName: contactName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contactName),
+      contactPhone: contactPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contactPhone),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbCopingVictory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbCopingVictory(
+      id: serializer.fromJson<int>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      intensityBefore: serializer.fromJson<int>(json['intensityBefore']),
+      intensityAfter: serializer.fromJson<int>(json['intensityAfter']),
+      moodAfter: serializer.fromJson<String>(json['moodAfter']),
+      strategyType: serializer.fromJson<String>(json['strategyType']),
+      strategyValue: serializer.fromJson<String>(json['strategyValue']),
+      customStrategy: serializer.fromJson<String?>(json['customStrategy']),
+      contactName: serializer.fromJson<String?>(json['contactName']),
+      contactPhone: serializer.fromJson<String?>(json['contactPhone']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'userId': serializer.toJson<String>(userId),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'intensityBefore': serializer.toJson<int>(intensityBefore),
+      'intensityAfter': serializer.toJson<int>(intensityAfter),
+      'moodAfter': serializer.toJson<String>(moodAfter),
+      'strategyType': serializer.toJson<String>(strategyType),
+      'strategyValue': serializer.toJson<String>(strategyValue),
+      'customStrategy': serializer.toJson<String?>(customStrategy),
+      'contactName': serializer.toJson<String?>(contactName),
+      'contactPhone': serializer.toJson<String?>(contactPhone),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbCopingVictory copyWith({
+    int? id,
+    String? userId,
+    DateTime? timestamp,
+    int? intensityBefore,
+    int? intensityAfter,
+    String? moodAfter,
+    String? strategyType,
+    String? strategyValue,
+    Value<String?> customStrategy = const Value.absent(),
+    Value<String?> contactName = const Value.absent(),
+    Value<String?> contactPhone = const Value.absent(),
+    DateTime? createdAt,
+  }) => DbCopingVictory(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    timestamp: timestamp ?? this.timestamp,
+    intensityBefore: intensityBefore ?? this.intensityBefore,
+    intensityAfter: intensityAfter ?? this.intensityAfter,
+    moodAfter: moodAfter ?? this.moodAfter,
+    strategyType: strategyType ?? this.strategyType,
+    strategyValue: strategyValue ?? this.strategyValue,
+    customStrategy: customStrategy.present
+        ? customStrategy.value
+        : this.customStrategy,
+    contactName: contactName.present ? contactName.value : this.contactName,
+    contactPhone: contactPhone.present ? contactPhone.value : this.contactPhone,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbCopingVictory copyWithCompanion(CopingVictoriesCompanion data) {
+    return DbCopingVictory(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      intensityBefore: data.intensityBefore.present
+          ? data.intensityBefore.value
+          : this.intensityBefore,
+      intensityAfter: data.intensityAfter.present
+          ? data.intensityAfter.value
+          : this.intensityAfter,
+      moodAfter: data.moodAfter.present ? data.moodAfter.value : this.moodAfter,
+      strategyType: data.strategyType.present
+          ? data.strategyType.value
+          : this.strategyType,
+      strategyValue: data.strategyValue.present
+          ? data.strategyValue.value
+          : this.strategyValue,
+      customStrategy: data.customStrategy.present
+          ? data.customStrategy.value
+          : this.customStrategy,
+      contactName: data.contactName.present
+          ? data.contactName.value
+          : this.contactName,
+      contactPhone: data.contactPhone.present
+          ? data.contactPhone.value
+          : this.contactPhone,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbCopingVictory(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('intensityBefore: $intensityBefore, ')
+          ..write('intensityAfter: $intensityAfter, ')
+          ..write('moodAfter: $moodAfter, ')
+          ..write('strategyType: $strategyType, ')
+          ..write('strategyValue: $strategyValue, ')
+          ..write('customStrategy: $customStrategy, ')
+          ..write('contactName: $contactName, ')
+          ..write('contactPhone: $contactPhone, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    userId,
+    timestamp,
+    intensityBefore,
+    intensityAfter,
+    moodAfter,
+    strategyType,
+    strategyValue,
+    customStrategy,
+    contactName,
+    contactPhone,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbCopingVictory &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.timestamp == this.timestamp &&
+          other.intensityBefore == this.intensityBefore &&
+          other.intensityAfter == this.intensityAfter &&
+          other.moodAfter == this.moodAfter &&
+          other.strategyType == this.strategyType &&
+          other.strategyValue == this.strategyValue &&
+          other.customStrategy == this.customStrategy &&
+          other.contactName == this.contactName &&
+          other.contactPhone == this.contactPhone &&
+          other.createdAt == this.createdAt);
+}
+
+class CopingVictoriesCompanion extends UpdateCompanion<DbCopingVictory> {
+  final Value<int> id;
+  final Value<String> userId;
+  final Value<DateTime> timestamp;
+  final Value<int> intensityBefore;
+  final Value<int> intensityAfter;
+  final Value<String> moodAfter;
+  final Value<String> strategyType;
+  final Value<String> strategyValue;
+  final Value<String?> customStrategy;
+  final Value<String?> contactName;
+  final Value<String?> contactPhone;
+  final Value<DateTime> createdAt;
+  const CopingVictoriesCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.intensityBefore = const Value.absent(),
+    this.intensityAfter = const Value.absent(),
+    this.moodAfter = const Value.absent(),
+    this.strategyType = const Value.absent(),
+    this.strategyValue = const Value.absent(),
+    this.customStrategy = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.contactPhone = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CopingVictoriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String userId,
+    required DateTime timestamp,
+    required int intensityBefore,
+    required int intensityAfter,
+    required String moodAfter,
+    required String strategyType,
+    required String strategyValue,
+    this.customStrategy = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.contactPhone = const Value.absent(),
+    required DateTime createdAt,
+  }) : userId = Value(userId),
+       timestamp = Value(timestamp),
+       intensityBefore = Value(intensityBefore),
+       intensityAfter = Value(intensityAfter),
+       moodAfter = Value(moodAfter),
+       strategyType = Value(strategyType),
+       strategyValue = Value(strategyValue),
+       createdAt = Value(createdAt);
+  static Insertable<DbCopingVictory> custom({
+    Expression<int>? id,
+    Expression<String>? userId,
+    Expression<DateTime>? timestamp,
+    Expression<int>? intensityBefore,
+    Expression<int>? intensityAfter,
+    Expression<String>? moodAfter,
+    Expression<String>? strategyType,
+    Expression<String>? strategyValue,
+    Expression<String>? customStrategy,
+    Expression<String>? contactName,
+    Expression<String>? contactPhone,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (intensityBefore != null) 'intensity_before': intensityBefore,
+      if (intensityAfter != null) 'intensity_after': intensityAfter,
+      if (moodAfter != null) 'mood_after': moodAfter,
+      if (strategyType != null) 'strategy_type': strategyType,
+      if (strategyValue != null) 'strategy_value': strategyValue,
+      if (customStrategy != null) 'custom_strategy': customStrategy,
+      if (contactName != null) 'contact_name': contactName,
+      if (contactPhone != null) 'contact_phone': contactPhone,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CopingVictoriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? userId,
+    Value<DateTime>? timestamp,
+    Value<int>? intensityBefore,
+    Value<int>? intensityAfter,
+    Value<String>? moodAfter,
+    Value<String>? strategyType,
+    Value<String>? strategyValue,
+    Value<String?>? customStrategy,
+    Value<String?>? contactName,
+    Value<String?>? contactPhone,
+    Value<DateTime>? createdAt,
+  }) {
+    return CopingVictoriesCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      timestamp: timestamp ?? this.timestamp,
+      intensityBefore: intensityBefore ?? this.intensityBefore,
+      intensityAfter: intensityAfter ?? this.intensityAfter,
+      moodAfter: moodAfter ?? this.moodAfter,
+      strategyType: strategyType ?? this.strategyType,
+      strategyValue: strategyValue ?? this.strategyValue,
+      customStrategy: customStrategy ?? this.customStrategy,
+      contactName: contactName ?? this.contactName,
+      contactPhone: contactPhone ?? this.contactPhone,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (intensityBefore.present) {
+      map['intensity_before'] = Variable<int>(intensityBefore.value);
+    }
+    if (intensityAfter.present) {
+      map['intensity_after'] = Variable<int>(intensityAfter.value);
+    }
+    if (moodAfter.present) {
+      map['mood_after'] = Variable<String>(moodAfter.value);
+    }
+    if (strategyType.present) {
+      map['strategy_type'] = Variable<String>(strategyType.value);
+    }
+    if (strategyValue.present) {
+      map['strategy_value'] = Variable<String>(strategyValue.value);
+    }
+    if (customStrategy.present) {
+      map['custom_strategy'] = Variable<String>(customStrategy.value);
+    }
+    if (contactName.present) {
+      map['contact_name'] = Variable<String>(contactName.value);
+    }
+    if (contactPhone.present) {
+      map['contact_phone'] = Variable<String>(contactPhone.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CopingVictoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('intensityBefore: $intensityBefore, ')
+          ..write('intensityAfter: $intensityAfter, ')
+          ..write('moodAfter: $moodAfter, ')
+          ..write('strategyType: $strategyType, ')
+          ..write('strategyValue: $strategyValue, ')
+          ..write('customStrategy: $customStrategy, ')
+          ..write('contactName: $contactName, ')
+          ..write('contactPhone: $contactPhone, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   _$AppDatabase.connect(DatabaseConnection c) : super.connect(c);
@@ -14506,6 +15238,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $LapseRecoverySessionsTable lapseRecoverySessions =
       $LapseRecoverySessionsTable(this);
+  late final $CopingVictoriesTable copingVictories = $CopingVictoriesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14529,6 +15264,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     relapsePlans,
     relapseContacts,
     lapseRecoverySessions,
+    copingVictories,
   ];
 }
 
@@ -21246,6 +21982,353 @@ typedef $$LapseRecoverySessionsTableProcessedTableManager =
       DbLapseRecoverySession,
       PrefetchHooks Function()
     >;
+typedef $$CopingVictoriesTableCreateCompanionBuilder =
+    CopingVictoriesCompanion Function({
+      Value<int> id,
+      required String userId,
+      required DateTime timestamp,
+      required int intensityBefore,
+      required int intensityAfter,
+      required String moodAfter,
+      required String strategyType,
+      required String strategyValue,
+      Value<String?> customStrategy,
+      Value<String?> contactName,
+      Value<String?> contactPhone,
+      required DateTime createdAt,
+    });
+typedef $$CopingVictoriesTableUpdateCompanionBuilder =
+    CopingVictoriesCompanion Function({
+      Value<int> id,
+      Value<String> userId,
+      Value<DateTime> timestamp,
+      Value<int> intensityBefore,
+      Value<int> intensityAfter,
+      Value<String> moodAfter,
+      Value<String> strategyType,
+      Value<String> strategyValue,
+      Value<String?> customStrategy,
+      Value<String?> contactName,
+      Value<String?> contactPhone,
+      Value<DateTime> createdAt,
+    });
+
+class $$CopingVictoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CopingVictoriesTable> {
+  $$CopingVictoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get intensityBefore => $composableBuilder(
+    column: $table.intensityBefore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get intensityAfter => $composableBuilder(
+    column: $table.intensityAfter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get moodAfter => $composableBuilder(
+    column: $table.moodAfter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get strategyType => $composableBuilder(
+    column: $table.strategyType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get strategyValue => $composableBuilder(
+    column: $table.strategyValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customStrategy => $composableBuilder(
+    column: $table.customStrategy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactPhone => $composableBuilder(
+    column: $table.contactPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CopingVictoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CopingVictoriesTable> {
+  $$CopingVictoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get intensityBefore => $composableBuilder(
+    column: $table.intensityBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get intensityAfter => $composableBuilder(
+    column: $table.intensityAfter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get moodAfter => $composableBuilder(
+    column: $table.moodAfter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get strategyType => $composableBuilder(
+    column: $table.strategyType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get strategyValue => $composableBuilder(
+    column: $table.strategyValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customStrategy => $composableBuilder(
+    column: $table.customStrategy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactPhone => $composableBuilder(
+    column: $table.contactPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CopingVictoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CopingVictoriesTable> {
+  $$CopingVictoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get intensityBefore => $composableBuilder(
+    column: $table.intensityBefore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get intensityAfter => $composableBuilder(
+    column: $table.intensityAfter,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get moodAfter =>
+      $composableBuilder(column: $table.moodAfter, builder: (column) => column);
+
+  GeneratedColumn<String> get strategyType => $composableBuilder(
+    column: $table.strategyType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get strategyValue => $composableBuilder(
+    column: $table.strategyValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customStrategy => $composableBuilder(
+    column: $table.customStrategy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contactPhone => $composableBuilder(
+    column: $table.contactPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$CopingVictoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CopingVictoriesTable,
+          DbCopingVictory,
+          $$CopingVictoriesTableFilterComposer,
+          $$CopingVictoriesTableOrderingComposer,
+          $$CopingVictoriesTableAnnotationComposer,
+          $$CopingVictoriesTableCreateCompanionBuilder,
+          $$CopingVictoriesTableUpdateCompanionBuilder,
+          (
+            DbCopingVictory,
+            BaseReferences<
+              _$AppDatabase,
+              $CopingVictoriesTable,
+              DbCopingVictory
+            >,
+          ),
+          DbCopingVictory,
+          PrefetchHooks Function()
+        > {
+  $$CopingVictoriesTableTableManager(
+    _$AppDatabase db,
+    $CopingVictoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CopingVictoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CopingVictoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CopingVictoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<int> intensityBefore = const Value.absent(),
+                Value<int> intensityAfter = const Value.absent(),
+                Value<String> moodAfter = const Value.absent(),
+                Value<String> strategyType = const Value.absent(),
+                Value<String> strategyValue = const Value.absent(),
+                Value<String?> customStrategy = const Value.absent(),
+                Value<String?> contactName = const Value.absent(),
+                Value<String?> contactPhone = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CopingVictoriesCompanion(
+                id: id,
+                userId: userId,
+                timestamp: timestamp,
+                intensityBefore: intensityBefore,
+                intensityAfter: intensityAfter,
+                moodAfter: moodAfter,
+                strategyType: strategyType,
+                strategyValue: strategyValue,
+                customStrategy: customStrategy,
+                contactName: contactName,
+                contactPhone: contactPhone,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String userId,
+                required DateTime timestamp,
+                required int intensityBefore,
+                required int intensityAfter,
+                required String moodAfter,
+                required String strategyType,
+                required String strategyValue,
+                Value<String?> customStrategy = const Value.absent(),
+                Value<String?> contactName = const Value.absent(),
+                Value<String?> contactPhone = const Value.absent(),
+                required DateTime createdAt,
+              }) => CopingVictoriesCompanion.insert(
+                id: id,
+                userId: userId,
+                timestamp: timestamp,
+                intensityBefore: intensityBefore,
+                intensityAfter: intensityAfter,
+                moodAfter: moodAfter,
+                strategyType: strategyType,
+                strategyValue: strategyValue,
+                customStrategy: customStrategy,
+                contactName: contactName,
+                contactPhone: contactPhone,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CopingVictoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CopingVictoriesTable,
+      DbCopingVictory,
+      $$CopingVictoriesTableFilterComposer,
+      $$CopingVictoriesTableOrderingComposer,
+      $$CopingVictoriesTableAnnotationComposer,
+      $$CopingVictoriesTableCreateCompanionBuilder,
+      $$CopingVictoriesTableUpdateCompanionBuilder,
+      (
+        DbCopingVictory,
+        BaseReferences<_$AppDatabase, $CopingVictoriesTable, DbCopingVictory>,
+      ),
+      DbCopingVictory,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -21292,4 +22375,6 @@ class $AppDatabaseManager {
       $$RelapseContactsTableTableManager(_db, _db.relapseContacts);
   $$LapseRecoverySessionsTableTableManager get lapseRecoverySessions =>
       $$LapseRecoverySessionsTableTableManager(_db, _db.lapseRecoverySessions);
+  $$CopingVictoriesTableTableManager get copingVictories =>
+      $$CopingVictoriesTableTableManager(_db, _db.copingVictories);
 }

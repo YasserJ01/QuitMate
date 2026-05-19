@@ -21,6 +21,7 @@ import '../widgets/quick_log_button.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import 'log_history_screen.dart';
 import 'detailed_stats_screen.dart';
+import 'victory_log_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -233,6 +234,16 @@ class _DashboardOverflowMenu extends ConsumerWidget {
               ],
             ),
           ),
+          const PopupMenuItem(
+            value: 'victories',
+            child: Row(
+              children: [
+                Icon(Icons.celebration, size: 20),
+                SizedBox(width: 12),
+                Text('My Victories'),
+              ],
+            ),
+          ),
           const PopupMenuDivider(),
           const PopupMenuItem(
             value: 'toolkit',
@@ -284,6 +295,9 @@ class _DashboardOverflowMenu extends ConsumerWidget {
             case 'stats':
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const DetailedStatsScreen()));
+            case 'victories':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const VictoryLogScreen()));
             case 'toolkit':
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const CravingToolkitScreen()));

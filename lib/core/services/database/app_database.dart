@@ -403,6 +403,22 @@ class LapseRecoverySessions extends Table {
   
 }
 
+@DataClassName('DbCopingVictory')
+class CopingVictories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
+  DateTimeColumn get timestamp => dateTime()();
+  IntColumn get intensityBefore => integer()();
+  IntColumn get intensityAfter => integer()();
+  TextColumn get moodAfter => text()();
+  TextColumn get strategyType => text()();
+  TextColumn get strategyValue => text()();
+  TextColumn get customStrategy => text().nullable()();
+  TextColumn get contactName => text().nullable()();
+  TextColumn get contactPhone => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
 // ─── Database Class ─────────────────────────────────────────────────────────
 
 @DriftDatabase(tables: [
@@ -424,12 +440,27 @@ class LapseRecoverySessions extends Table {
   RelapsePlans,
   RelapseContacts,
   LapseRecoverySessions,
+  CopingVictories,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) {
+        return m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.createTable(copingVictories);
+        }
+      },
+    );
+  }
 
   static Future<AppDatabase> open() async {
     final db = LazyDatabase(() async {
@@ -462,6 +493,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(relapsePlans).go();
       await delete(relapseContacts).go();
       await delete(lapseRecoverySessions).go();
+      await delete(copingVictories).go();
     });
   }
 }
