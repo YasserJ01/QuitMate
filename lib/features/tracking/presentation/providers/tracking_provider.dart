@@ -4,6 +4,7 @@ import '../../data/models/log_entry.dart';
 import '../../data/models/craving_entry.dart';
 import '../../data/repositories/tracking_repository.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
+import '../../../interventions/presentation/providers/notification_provider.dart';
 
 // Repository provider
 final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
@@ -132,9 +133,25 @@ class QuickLogState {
 class QuickLogNotifier extends StateNotifier<QuickLogState> {
   final TrackingRepository _repository;
   final String _userId;
+  final Future<void> Function(String userId)? _onLogEvent;
+  bool _permissionTriggered = false;
 
-  QuickLogNotifier(this._repository, this._userId)
-      : super(const QuickLogState());
+  QuickLogNotifier(
+    this._repository,
+    this._userId, {
+    Future<void> Function(String userId)? onLogEvent,
+  })  : _onLogEvent = onLogEvent,
+        super(const QuickLogState());
+
+  Future<void> _triggerPermissionIfFirstLog() async {
+    if (_permissionTriggered || _userId.isEmpty || _onLogEvent == null) return;
+    _permissionTriggered = true;
+    try {
+      await _onLogEvent(_userId);
+    } catch (_) {
+      // Non-fatal — permission request failure should not break logging
+    }
+  }
 
 // Quick log cigarette (≤5 seconds requirement)
   Future<bool> logCigarette({
@@ -155,6 +172,8 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       );
 
       final saved = await _repository.addLogEntry(entry);
+
+      await _triggerPermissionIfFirstLog();
 
       if (!mounted) return true;
       state = state.copyWith(
@@ -193,6 +212,8 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
 
       final saved = await _repository.addLogEntry(entry);
 
+      await _triggerPermissionIfFirstLog();
+
       if (!mounted) return true;
       state = state.copyWith(
         isLogging: false,
@@ -227,6 +248,8 @@ class QuickLogNotifier extends StateNotifier<QuickLogState> {
       );
 
       await _repository.addLogEntry(entry);
+
+      await _triggerPermissionIfFirstLog();
 
       if (!mounted) return true;
       state = state.copyWith(isLogging: false);
@@ -302,7 +325,17 @@ final quickLogProvider =
     final userIdAsync = ref.watch(currentUserIdProvider);
 
     return userIdAsync.when(
-      data: (userId) => QuickLogNotifier(repository, userId ?? ''),
+      data: (userId) {
+        Future<void> onLog(String uid) async {
+          final manager = await ref.read(notificationManagerProvider.future);
+          await manager.requestPermissionsIfAppropriate(uid);
+        }
+        return QuickLogNotifier(
+          repository,
+          userId ?? '',
+          onLogEvent: userId != null ? onLog : null,
+        );
+      },
       loading: () => QuickLogNotifier(repository, ''),
       error: (_, _) => QuickLogNotifier(repository, ''),
     );

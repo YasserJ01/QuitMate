@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/database/app_database.dart';
 import '../../../../core/theme/dashboard_theme.dart';
-import '../../data/repositories/coping_repository.dart';
 import '../providers/coping_provider.dart';
 import '../providers/tracking_provider.dart';
 

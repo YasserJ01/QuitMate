@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
@@ -195,6 +196,17 @@ class PushNotificationService {
     _tapController.close();
   }
 
+  /// Returns and clears any pending background tap payload stored from a
+  /// previous launch when the app was closed.
+  Future<String?> consumePendingTapPayload() async {
+    const storage = FlutterSecureStorage();
+    final payload = await storage.read(key: 'pending_notification_tap_payload');
+    if (payload != null) {
+      await storage.delete(key: 'pending_notification_tap_payload');
+    }
+    return payload;
+  }
+
   // ─── Internals ─────────────────────────────────────────────────────────────
 
   static const _channelId = 'quitmate_interventions';
@@ -221,8 +233,15 @@ class PushNotificationService {
 // Background callback — must be top-level
 @pragma('vm:entry-point')
 void _onBackgroundTap(NotificationResponse response) {
-  // Background taps: stored in shared_preferences so the app can read on next launch.
   debugPrint('Background notification tap: ${response.payload}');
+  // Store payload in secure storage so the app can read it on next launch.
+  const storage = FlutterSecureStorage();
+  if (response.payload != null && response.payload!.isNotEmpty) {
+    storage.write(
+      key: 'pending_notification_tap_payload',
+      value: response.payload!,
+    );
+  }
 }
 
 class NotificationTapPayload {
