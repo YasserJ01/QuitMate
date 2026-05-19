@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../domain/entities/achievement.dart';
 import '../../domain/services/achievement_engine.dart';
 import '../../domain/repositories/i_achievement_repository.dart';
@@ -14,7 +15,8 @@ import '../../../interventions/data/models/notification_models.dart';
 // ─── Repository provider ──────────────────────────────────────────────────
 
 final achievementRepositoryProvider = Provider<IAchievementRepository>((ref) {
-  return AchievementRepositoryImpl();
+  final db = ref.watch(databaseProvider);
+  return AchievementRepositoryImpl(db);
 });
 
 // ─── All achievements for the current user's mode ─────────────────────────
@@ -197,14 +199,14 @@ class AchievementNotifier extends AsyncNotifier<List<Achievement>> {
 
   static EngineStatistics _mapStatistics(
     raw_stats.Statistics s,
-    /* UserProfile profile, */
-    _, // unused; kept for signature compatibility
+    dynamic profile,
   ) {
+    final hasCostData = profile != null && profile.dailySmokingCost != null;
     return EngineStatistics(
       currentStreak: s.currentStreak,
       recoveryCount: s.recoveryCount,
       moneySaved: s.moneySaved,
-      hasMoneySavingsData: s.moneySaved > 0 || s.potentialMoneySaved > 0,
+      hasMoneySavingsData: hasCostData || s.moneySaved > 0 || s.potentialMoneySaved > 0,
     );
   }
 }

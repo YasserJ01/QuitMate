@@ -7,9 +7,9 @@ import '../../../onboarding/domain/entities/goal_type.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 import '../providers/tracking_provider.dart';
 import '../screens/lapse_recovery_screen.dart';
+import '../widgets/coping_sheet.dart';
+import '../widgets/victory_sheet.dart';
 
-/// Floating action button that expands into quick-log options.
-/// Mode-aware: shows different actions based on goalType.
 class QuickLogButton extends ConsumerStatefulWidget {
   final VoidCallback? onCravingLogged;
   final VoidCallback? onCravingResisted;
@@ -69,27 +69,42 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
     final ok = await ref.read(quickLogProvider.notifier).logCigarette();
     if (ok && context.mounted) {
       widget.onLogSuccess?.call();
-      // Navigate to lapse recovery screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              LapseRecoveryScreen(lapseType: LogType.cigaretteSmoked),
+          builder: (_) => LapseRecoveryScreen(lapseType: LogType.cigaretteSmoked),
         ),
       );
     }
   }
 
-  Future<void> _logCraving() async {
+  void _openCravingSheet() {
     _close();
-    final ok = await ref.read(quickLogProvider.notifier).logCraving(
-          intensity: CravingIntensity.moderate,
-        );
-    if (ok && context.mounted) {
-      _showSnack('Craving logged', Icons.flash_on);
-      widget.onCravingLogged?.call();
-      widget.onLogSuccess?.call();
-    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => CopingSheet(
+        onLogged: () {
+          widget.onCravingLogged?.call();
+          widget.onLogSuccess?.call();
+        },
+      ),
+    );
+  }
+
+  void _openVictorySheet() {
+    _close();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => const VictorySheet(),
+    );
   }
 
   Future<void> _logResisted() async {
@@ -98,8 +113,6 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
           intensity: CravingIntensity.mild,
         );
     if (ok && context.mounted) {
-      _showSnack('Craving resisted! 💪', Icons.check_circle_outline,
-          color: AppTheme.successColor);
       widget.onCravingResisted?.call();
       widget.onLogSuccess?.call();
     }
@@ -110,54 +123,13 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
     final ok = await ref.read(quickLogProvider.notifier).logEpisode();
     if (ok && context.mounted) {
       widget.onLogSuccess?.call();
-      // Navigate to lapse recovery screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              LapseRecoveryScreen(lapseType: LogType.urgeEpisode),
+          builder: (_) => LapseRecoveryScreen(lapseType: LogType.urgeEpisode),
         ),
       );
     }
-  }
-
-  Future<void> _logDelayed() async {
-    _close();
-    final userId = await ref.read(currentUserIdProvider.future);
-    if (userId == null) return;
-
-    final entry = LogEntry()
-      ..userId = userId
-      ..type = LogType.cravingDelayed
-      ..timestamp = DateTime.now().toUtc();
-
-    final repo = ref.read(trackingRepositoryProvider);
-    await repo.addLogEntry(entry);
-
-    if (mounted) {
-      _showSnack('Craving delayed! ⏰', Icons.access_time,
-          color: AppTheme.successColor);
-      widget.onLogSuccess?.call();
-    }
-  }
-
-  void _showSnack(String message, IconData icon, {Color? color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(message),
-          ],
-        ),
-        backgroundColor: color ?? AppTheme.primaryColor,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
   }
 
   @override
@@ -166,19 +138,16 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Expanded options — mode-aware
         ScaleTransition(
           scale: _expandAnim,
           child: _ModeAwareFabs(
             onCigarette: _logCigarette,
             onEpisode: _logEpisode,
-            onCraving: _logCraving,
+            onCraving: _openCravingSheet,
             onResisted: _logResisted,
-            onDelayed: _logDelayed,
+            onDelayed: _openVictorySheet,
           ),
         ),
-
-        // Main FAB
         RotationTransition(
           turns: _rotateAnim,
           child: FloatingActionButton(
@@ -193,7 +162,6 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton>
   }
 }
 
-/// Mode-aware mini FABs — shows different actions per goal type.
 class _ModeAwareFabs extends ConsumerWidget {
   final VoidCallback onCigarette;
   final VoidCallback onEpisode;
@@ -215,10 +183,9 @@ class _ModeAwareFabs extends ConsumerWidget {
 
     return userIdAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, _) => _buildSmokingActions(), // default
+      error: (_, _) => _buildSmokingActions(),
       data: (userId) {
         if (userId == null) return _buildSmokingActions();
-        // Read profile synchronously isn't possible; use a future builder
         return FutureBuilder<GoalType>(
           future: _getGoalType(ref, userId),
           builder: (context, snapshot) {
@@ -317,7 +284,7 @@ class _MiniFab extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),

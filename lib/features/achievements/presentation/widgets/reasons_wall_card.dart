@@ -1,12 +1,13 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:quitmate/core/services/database/isar_service.dart';
+import 'package:quitmate/core/services/database/app_database.dart' as drift_db;
+import '../../../../core/theme/dashboard_theme.dart';
 import '../../../onboarding/data/models/user_profile.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
+import 'package:quitmate/core/services/database/database_provider.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
 
-/// Displays the user's personal reasons/motivations on the dashboard.
-/// Shows up to 3 reasons with a "View all" or "Edit" CTA.
 class ReasonsWallCard extends ConsumerWidget {
   const ReasonsWallCard({super.key});
 
@@ -34,7 +35,6 @@ class ReasonsWallCard extends ConsumerWidget {
     WidgetRef ref,
     String userId,
   ) {
-    // Load profile via repository
     final profileFuture = _loadProfile(ref, userId);
 
     return FutureBuilder<UserProfile?>(
@@ -57,66 +57,86 @@ class ReasonsWallCard extends ConsumerWidget {
     final reasons = profile.reasons;
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.favorite, color: Colors.red, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'My Reasons',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DashboardTheme.surface(context),
+        borderRadius: BorderRadius.circular(DashboardTheme.cardRadius),
+        border: Border.all(color: DashboardTheme.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DashboardTheme.danger(context).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _openEditSheet(context, ref, userId, profile),
-                  icon: Icon(
-                    reasons.isEmpty ? Icons.add : Icons.edit,
-                    size: 18,
-                  ),
-                  label: Text(reasons.isEmpty ? 'Add' : 'Edit'),
-                ),
-              ],
-            ),
-            if (reasons.isEmpty) ...[
-              const SizedBox(height: 12),
+                child: const Icon(Icons.favorite, color: Color(0xFFEF4444), size: 20),
+              ),
+              const SizedBox(width: 12),
               Text(
-                'Add the reasons why you want to quit or reduce.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade600,
+                'My Reasons',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: DashboardTheme.textPrimary(context),
                 ),
               ),
-              const SizedBox(height: 8),
-            ] else ...[
-              const SizedBox(height: 12),
-              ...reasons.map(
-                    (reason) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• ',
-                              style: TextStyle(fontSize: 16)),
-                          Expanded(
-                            child: Text(
-                              reason,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _openEditSheet(context, ref, userId, profile),
+                icon: Icon(
+                  reasons.isEmpty ? Icons.add : Icons.edit,
+                  size: 18,
+                ),
+                label: Text(reasons.isEmpty ? 'Add' : 'Edit'),
+              ),
+            ],
+          ),
+          if (reasons.isEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Add the reasons why you want to quit or reduce.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: DashboardTheme.textSecondary(context),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            ...reasons.map(
+              (reason) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.only(top: 7),
+                      decoration: BoxDecoration(
+                        color: DashboardTheme.primary(context),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        reason,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: DashboardTheme.textPrimary(context),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -146,15 +166,61 @@ class ReasonsWallCard extends ConsumerWidget {
     UserProfile profile,
     List<String> reasons,
   ) async {
-    final isar = await IsarService.instance;
-    await isar.writeTxn(() async {
-      profile.reasons = reasons;
-      await isar.userProfiles.put(profile);
-    });
+    final db = ref.read(databaseProvider);
+    profile.reasons = reasons;
+    profile.updatedAt = DateTime.now();
+
+    final existingRow = await (db.select(db.userProfiles)
+        ..where((t) => t.userId.equals(userId))).getSingleOrNull();
+
+    if (existingRow != null) {
+      profile.id = existingRow.id;
+      profile.createdAt = existingRow.createdAt;
+      await (db.update(db.userProfiles)
+          ..where((t) => t.id.equals(existingRow.id))).write(_profileToCompanion(profile));
+    }
+  }
+
+  drift_db.UserProfilesCompanion _profileToCompanion(UserProfile p) {
+    return drift_db.UserProfilesCompanion(
+      id: drift.Value(p.id),
+      userId: drift.Value(p.userId),
+      nickname: drift.Value(p.nickname),
+      goalType: drift.Value(p.goalType.name),
+      modeLocked: drift.Value(p.modeLocked),
+      longestStreakDays: drift.Value(p.longestStreakDays),
+      recoveryCount: drift.Value(p.recoveryCount),
+      lastLapseAt: drift.Value(p.lastLapseAt),
+      cigarettesPerDay: drift.Value(p.cigarettesPerDay),
+      cigarettesPerPack: drift.Value(p.cigarettesPerPack),
+      costPerPack: drift.Value(p.costPerPack),
+      ttfcMinutesIndex: drift.Value(p.ttfcMinutesIndex),
+      yearsSmoking: drift.Value(p.yearsSmoking),
+      reductionPlanJson: drift.Value(p.reductionPlanJson),
+      previousQuitAttempts: drift.Value(p.previousQuitAttempts),
+      previousAids: drift.Value(p.previousAids),
+      confidenceToQuit: drift.Value(p.confidenceToQuit),
+      smokingWindows: drift.Value(p.smokingWindows),
+      episodesPerWeek: drift.Value(p.episodesPerWeek),
+      episodeDurationMinutes: drift.Value(p.episodeDurationMinutes),
+      pornInvolvementFlag: drift.Value(p.pornInvolvementFlag),
+      distressLevel: drift.Value(p.distressLevel),
+      sleepEffectIndex: drift.Value(p.sleepEffectIndex),
+      focusEffectIndex: drift.Value(p.focusEffectIndex),
+      relationshipEffectIndex: drift.Value(p.relationshipEffectIndex),
+      previousReductionAttempts: drift.Value(p.previousReductionAttempts),
+      confidenceToReduce: drift.Value(p.confidenceToReduce),
+      frequencyTarget: drift.Value(p.frequencyTarget),
+      timeOfDayPatterns: drift.Value(p.timeOfDayPatterns),
+      values: drift.Value(p.values),
+      triggers: drift.Value(p.triggers.map((e) => e.name).toList()),
+      reasons: drift.Value(p.reasons),
+      quitDate: drift.Value(p.quitDate),
+      createdAt: drift.Value(p.createdAt),
+      updatedAt: drift.Value(p.updatedAt),
+    );
   }
 }
-
-// ─── Edit sheet ────────────────────────────────────────────────────────────
 
 class _ReasonsWallEditSheet extends StatefulWidget {
   final List<String> initialReasons;
@@ -219,7 +285,6 @@ class _ReasonsWallEditSheetState extends State<_ReasonsWallEditSheet> {
               itemCount: _controllers.length + 1,
               itemBuilder: (context, index) {
                 if (index == _controllers.length) {
-                  // "Add reason" button
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: OutlinedButton.icon(

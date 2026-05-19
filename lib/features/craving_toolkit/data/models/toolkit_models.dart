@@ -1,15 +1,9 @@
-import 'package:isar/isar.dart';
-
-part 'toolkit_models.g.dart';
-
-// ============= BREATHING EXERCISE =============
-
 enum BreathingPattern {
-  box,           // 4-4-4-4 (Box Breathing)
-  relaxing,      // 4-7-8 (Relaxing Breath)
-  energizing,    // 4-4-4-0 (Energizing)
-  calm,          // 4-6-4-0 (Calming)
-  custom;        // User defined
+  box,
+  relaxing,
+  energizing,
+  calm,
+  custom;
 
   String get displayName {
     switch (this) {
@@ -121,33 +115,31 @@ enum BreathingPattern {
   }
 }
 
-@collection
 class BreathingSession {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late BreathingPattern pattern;
-
-  late int durationSeconds;
-  late int cyclesCompleted;
-  late DateTime startTime;
+  int id;
+  String userId;
+  BreathingPattern pattern;
+  int durationSeconds;
+  int cyclesCompleted;
+  DateTime startTime;
   DateTime? endTime;
-
-  // Linked craving
   int? cravingId;
-
-  // Effectiveness rating (1-5)
   int? effectivenessRating;
+  DateTime createdAt;
 
-  late DateTime createdAt;
-
-  BreathingSession() {
-    createdAt = DateTime.now();
-    startTime = DateTime.now();
-  }
+  BreathingSession({
+    this.id = 0,
+    required this.userId,
+    required this.pattern,
+    required this.durationSeconds,
+    required this.cyclesCompleted,
+    DateTime? startTime,
+    this.endTime,
+    this.cravingId,
+    this.effectivenessRating,
+    DateTime? createdAt,
+  })  : startTime = startTime ?? DateTime.now(),
+        createdAt = createdAt ?? DateTime.now();
 
   bool get isCompleted => endTime != null;
 
@@ -156,8 +148,6 @@ class BreathingSession {
     return endTime!.difference(startTime).inMinutes;
   }
 }
-
-// ============= CBT TECHNIQUES =============
 
 enum CbtTechnique {
   urgeSurfing,
@@ -227,50 +217,47 @@ enum CbtTechnique {
   }
 }
 
-@collection
 class CbtSession {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late CbtTechnique technique;
-
-  late DateTime startTime;
+  int id;
+  String userId;
+  CbtTechnique technique;
+  DateTime startTime;
   DateTime? endTime;
-
-  // User responses/notes
   String? thoughtsBefore;
   String? thoughtsAfter;
   String? consequences;
   String? alternativeChosen;
-
-  // Linked craving
   int? cravingId;
-
-  // Did it help?
   bool? wasHelpful;
-  int? helpfulnessRating; // 1-5
+  int? helpfulnessRating;
+  DateTime createdAt;
 
-  late DateTime createdAt;
-
-  CbtSession() {
-    createdAt = DateTime.now();
-    startTime = DateTime.now();
-  }
+  CbtSession({
+    this.id = 0,
+    required this.userId,
+    required this.technique,
+    DateTime? startTime,
+    this.endTime,
+    this.thoughtsBefore,
+    this.thoughtsAfter,
+    this.consequences,
+    this.alternativeChosen,
+    this.cravingId,
+    this.wasHelpful,
+    this.helpfulnessRating,
+    DateTime? createdAt,
+  })  : startTime = startTime ?? DateTime.now(),
+        createdAt = createdAt ?? DateTime.now();
 
   bool get isCompleted => endTime != null;
 }
 
-// ============= GROUNDING EXERCISES =============
-
 enum GroundingExercise {
-  fiveSenses,      // 5-4-3-2-1 technique
-  bodyAwareness,   // Body scan
-  objectFocus,     // Focus on one object
-  counting,        // Count backwards
-  coldWater;       // Splash cold water
+  fiveSenses,
+  bodyAwareness,
+  objectFocus,
+  counting,
+  coldWater;
 
   String get displayName {
     switch (this) {
@@ -333,46 +320,42 @@ enum GroundingExercise {
   }
 }
 
-@collection
 class GroundingSession {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late GroundingExercise exercise;
-
-  late DateTime startTime;
+  int id;
+  String userId;
+  GroundingExercise exercise;
+  DateTime startTime;
   DateTime? endTime;
-
-  // Five senses responses
   String? seeItems;
   String? touchItems;
   String? hearItems;
   String? smellItems;
   String? tasteItems;
-
-  // General notes
   String? notes;
-
-  // Linked craving
   int? cravingId;
-
-  // Effectiveness
   int? effectivenessRating;
+  DateTime createdAt;
 
-  late DateTime createdAt;
-
-  GroundingSession() {
-    createdAt = DateTime.now();
-    startTime = DateTime.now();
-  }
+  GroundingSession({
+    this.id = 0,
+    required this.userId,
+    required this.exercise,
+    DateTime? startTime,
+    this.endTime,
+    this.seeItems,
+    this.touchItems,
+    this.hearItems,
+    this.smellItems,
+    this.tasteItems,
+    this.notes,
+    this.cravingId,
+    this.effectivenessRating,
+    DateTime? createdAt,
+  })  : startTime = startTime ?? DateTime.now(),
+        createdAt = createdAt ?? DateTime.now();
 
   bool get isCompleted => endTime != null;
 }
-
-// ============= DISTRACTION ACTIVITIES =============
 
 enum DistractionActivity {
   breathing,
@@ -462,32 +445,29 @@ enum DistractionActivity {
   }
 }
 
-@collection
 class DistractionSession {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late DistractionActivity activity;
-
-  late DateTime startTime;
+  int id;
+  String userId;
+  DistractionActivity activity;
+  DateTime startTime;
   DateTime? endTime;
-
-  // Did it help?
   bool? wasEffective;
   int? effectivenessRating;
-
-  // Linked craving
   int? cravingId;
+  DateTime createdAt;
 
-  late DateTime createdAt;
-
-  DistractionSession() {
-    createdAt = DateTime.now();
-    startTime = DateTime.now();
-  }
+  DistractionSession({
+    this.id = 0,
+    required this.userId,
+    required this.activity,
+    DateTime? startTime,
+    this.endTime,
+    this.wasEffective,
+    this.effectivenessRating,
+    this.cravingId,
+    DateTime? createdAt,
+  })  : startTime = startTime ?? DateTime.now(),
+        createdAt = createdAt ?? DateTime.now();
 
   bool get isCompleted => endTime != null;
 
@@ -496,8 +476,6 @@ class DistractionSession {
     return endTime!.difference(startTime).inMinutes;
   }
 }
-
-// ============= TOOLKIT USAGE STATISTICS =============
 
 class ToolkitStatistics {
   final int totalBreathingSessions;

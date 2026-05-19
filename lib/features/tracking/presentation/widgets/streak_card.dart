@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../onboarding/domain/entities/goal_type.dart';
 import '../../data/models/statistics.dart';
 import '../../services/statistics_calculator.dart';
@@ -79,7 +78,14 @@ class StreakCard extends StatelessWidget {
     return Card(
       child: Container(
         decoration: BoxDecoration(
-          gradient: AppTheme.successGradient,
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF388E3C),
+              const Color(0xFF2E7D32),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: intensity.glowRadius > 0
               ? [

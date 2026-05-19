@@ -4,6 +4,7 @@ import 'package:quitmate/features/interventions/presentation/screens/notificatio
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../achievements/presentation/providers/achievement_provider.dart';
+import '../../../achievements/domain/entities/achievement.dart';
 import '../../../achievements/presentation/screens/badge_gallery_screen.dart';
 import '../../../achievements/presentation/widgets/achievement_unlock_overlay.dart';
 import '../../../craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
@@ -20,6 +21,7 @@ import '../widgets/quick_log_button.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import 'log_history_screen.dart';
 import 'detailed_stats_screen.dart';
+import 'victory_log_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -29,14 +31,13 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _hasEvaluatedAchievements = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(statisticsProvider.notifier).refresh();
-      _checkMilestones();
-      // NOTE: _evaluateAchievements() is now called via ref.listen() below
-      // so it fires AFTER statistics finish loading (B-01 fix).
     });
   }
 
@@ -46,79 +47,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  Future<void> _checkMilestones() async {
-    final managerAsync = ref.read(notificationManagerProvider);
-    final manager = managerAsync.valueOrNull;
-    if (manager == null) return;
-
-    final userId = await ref.read(currentUserIdProvider.future);
-    if (userId == null) return;
-
-    final stats = ref.read(statisticsProvider).statistics;
-    final streak = stats.currentStreak;
-    if (streak > 0) {
-      await manager.onStreakMilestone(userId, streak);
-    }
-
-    final lastOpened = DateTime.now().subtract(const Duration(hours: 25));
-    await manager.onInactivityDetected(userId, lastOpened);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // B-01 fix: listen to statistics state — evaluate achievements whenever
-    // fresh stats arrive (after any log event or manual refresh).
     ref.listen<StatisticsState>(statisticsProvider, (previous, next) {
+      if (_hasEvaluatedAchievements) return;
       if (!next.isLoading && next.error == null && next.statistics.currentStreak > 0) {
+        _hasEvaluatedAchievements = true;
         _evaluateAchievements();
       }
     });
 
     final statsState = ref.watch(statisticsProvider);
     final userIdAsync = ref.watch(currentUserIdProvider);
+    final earnedAsync = ref.watch(earnedAchievementsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'History',
-            onPressed: () => _push(context, const LogHistoryScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            tooltip: 'Detailed stats',
-            onPressed: () => _push(context, const DetailedStatsScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.self_improvement),
-            tooltip: 'Craving toolkit',
-            onPressed: () => _push(context, const CravingToolkitScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.shield),
-            tooltip: 'Relapse plan',
-            onPressed: () => _push(context, const RelapsePlanScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notification settings',
-            onPressed: () =>
-                _push(context, const NotificationSettingsScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.emoji_events),
-            tooltip: 'Achievements',
-            onPressed: () =>
-                _push(context, const BadgeGalleryScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: () =>
-                _push(context, const SettingsScreen()),
-          ),
+          _AchievementsIconButton(earnedAsync: earnedAsync),
+          _DashboardOverflowMenu(),
         ],
       ),
       body: Stack(
@@ -185,9 +133,187 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.invalidate(todaysLogsProvider);
     _evaluateAchievements();
   }
+}
 
-  void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+// ─── Achievements icon with badge ─────────────────────────────────────────
+
+class _AchievementsIconButton extends ConsumerWidget {
+  final AsyncValue<List<Achievement>> earnedAsync;
+
+  const _AchievementsIconButton({required this.earnedAsync});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final newCount = earnedAsync.when(
+      data: (achievements) => achievements
+          .where((a) => a.unlockedAt != null &&
+              DateTime.now().difference(a.unlockedAt!).inDays <= 1)
+          .length,
+      loading: () => 0,
+      error: (_, __) => 0,
+    );
+
+    return MergeSemantics(
+      child: Semantics(
+        label: 'Achievements. $newCount new unlock${newCount == 1 ? '' : 's'}',
+        button: true,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.emoji_events),
+              tooltip: 'Achievements',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BadgeGalleryScreen()),
+              ),
+            ),
+            if (newCount > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    newCount > 9 ? '9+' : '$newCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Overflow menu for secondary actions ──────────────────────────────────
+
+class _DashboardOverflowMenu extends ConsumerWidget {
+  const _DashboardOverflowMenu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Semantics(
+      label: 'More options',
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        tooltip: 'More options',
+        itemBuilder: (context) => [
+          const PopupMenuItem(
+            value: 'history',
+            child: Row(
+              children: [
+                Icon(Icons.history, size: 20),
+                SizedBox(width: 12),
+                Text('History'),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'stats',
+            child: Row(
+              children: [
+                Icon(Icons.bar_chart, size: 20),
+                SizedBox(width: 12),
+                Text('Detailed Stats'),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'victories',
+            child: Row(
+              children: [
+                Icon(Icons.celebration, size: 20),
+                SizedBox(width: 12),
+                Text('My Victories'),
+              ],
+            ),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'toolkit',
+            child: Row(
+              children: [
+                Icon(Icons.self_improvement, size: 20),
+                SizedBox(width: 12),
+                Text('Craving Toolkit'),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'relapse',
+            child: Row(
+              children: [
+                Icon(Icons.shield, size: 20),
+                SizedBox(width: 12),
+                Text('Relapse Plan'),
+              ],
+            ),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'notifications',
+            child: Row(
+              children: [
+                Icon(Icons.notifications_outlined, size: 20),
+                SizedBox(width: 12),
+                Text('Notifications'),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'settings',
+            child: Row(
+              children: [
+                Icon(Icons.settings, size: 20),
+                SizedBox(width: 12),
+                Text('Settings'),
+              ],
+            ),
+          ),
+        ],
+        onSelected: (value) {
+          switch (value) {
+            case 'history':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const LogHistoryScreen()));
+            case 'stats':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const DetailedStatsScreen()));
+            case 'victories':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const VictoryLogScreen()));
+            case 'toolkit':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const CravingToolkitScreen()));
+            case 'relapse':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const RelapsePlanScreen()));
+            case 'notifications':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()));
+            case 'settings':
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          }
+        },
+      ),
+    );
   }
 }
 

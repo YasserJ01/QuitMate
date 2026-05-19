@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/services/database/isar_service.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../../interventions/presentation/providers/notification_provider.dart';
 
 class DeleteAllDataScreen extends ConsumerStatefulWidget {
@@ -119,11 +119,9 @@ class _DeleteAllDataScreenState extends ConsumerState<DeleteAllDataScreen> {
 
     setState(() => _isDeleting = true);
     try {
-      // 1. Clear all Isar collections
-      final isar = await IsarService.instance;
-      await isar.writeTxn(() async {
-        await isar.clear();
-      });
+      // 1. Clear all database tables
+      final db = ref.read(databaseProvider);
+      await db.clearAllData();
 
       // 2. Delete all flutter_secure_storage keys
       await const FlutterSecureStorage().deleteAll();

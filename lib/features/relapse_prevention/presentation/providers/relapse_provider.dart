@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/relapse_models.dart';
 import '../../data/repositories/relapse_repository.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
 
 // Repository provider
 final relapseRepositoryProvider = Provider<RelapseRepository>((ref) {
-  return RelapseRepository();
+  final db = ref.watch(databaseProvider);
+  return RelapseRepository(db);
 });
 
 // ============= RELAPSE PLAN PROVIDERS =============

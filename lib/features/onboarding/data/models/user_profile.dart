@@ -1,73 +1,86 @@
-import 'package:isar/isar.dart';
 import '../../domain/entities/goal_type.dart';
 
-part 'user_profile.g.dart';
-
-@collection
 class UserProfile {
-  Id id = Isar.autoIncrement;
-
-  @Index(unique: true)
-  late String userId;
-
+  int id;
+  String userId;
   String? nickname;
+  GoalType goalType;
+  bool modeLocked;
+  int longestStreakDays;
+  int recoveryCount;
+  DateTime? lastLapseAt;
 
-  @Enumerated(EnumType.name)
-  late GoalType goalType;
-
-  // Mode lock flag — set true after onboarding completes (BR-02)
-  bool modeLocked = false;
-
-  // Denormalized streak data for fast reads (SRS §13.6)
-  int longestStreakDays = 0;
-  int recoveryCount = 0;
-  DateTime? lastLapseAt; // UTC — for post-lapse notification scheduling
-
-  // ── Smoking profile (only set if goalType == quitSmoking) ─────────────
+  // Smoking profile
   int? cigarettesPerDay;
   int? cigarettesPerPack;
   double? costPerPack;
-  int? ttfcMinutesIndex; // 0=≤5min, 1=6-30min, 2=31-60min, 3=>60min
+  int? ttfcMinutesIndex;
   int? yearsSmoking;
-  String? reductionPlanJson; // gradual reduction schedule as JSON string (FR-S07)
+  String? reductionPlanJson;
   int? previousQuitAttempts;
-  List<String> previousAids = [];
-  int? confidenceToQuit; // 1–10
-  List<String> smokingWindows = []; // time-of-day risk windows
+  List<String> previousAids;
+  int? confidenceToQuit;
+  List<String> smokingWindows;
 
-  // ── Reduction profile (only set if goalType == reduceMasturbation) ────
+  // Reduction profile
   int? episodesPerWeek;
-  int? episodeDurationMinutes; // user estimate for time reclaimed calc
-  bool? pornInvolvementFlag; // optional, user-volunteered (FR-M02 neutral label)
-  int? distressLevel; // 1–10
-  int? sleepEffectIndex; // 0=None, 1=Slight, 2=Moderate, 3=Severe
+  int? episodeDurationMinutes;
+  bool? pornInvolvementFlag;
+  int? distressLevel;
+  int? sleepEffectIndex;
   int? focusEffectIndex;
   int? relationshipEffectIndex;
   int? previousReductionAttempts;
-  int? confidenceToReduce; // 1–10
-  int? frequencyTarget; // episodes/week goal (FR-M08)
-  List<String> timeOfDayPatterns = []; // morning, afternoon, evening, etc.
-  List<String> values = []; // personal motivation values (FR-M07)
+  int? confidenceToReduce;
+  int? frequencyTarget;
+  List<String> timeOfDayPatterns;
+  List<String> values;
 
-  // ── Shared ────────────────────────────────────────────────────────────
-  @Enumerated(EnumType.name)
-  List<TriggerType> triggers = [];
-
-  // Reasons Wall — personal motivations visible on dashboard (FR-P09)
-  List<String> reasons = [];
-
-  // Quit/start date (UTC)
+  // Shared
+  List<TriggerType> triggers;
+  List<String> reasons;
   DateTime? quitDate;
-
-  // Timestamps
-  late DateTime createdAt;
+  DateTime createdAt;
   DateTime? updatedAt;
 
-  UserProfile() {
-    createdAt = DateTime.now();
-  }
+  UserProfile({
+    this.id = 0,
+    required this.userId,
+    this.nickname,
+    required this.goalType,
+    this.modeLocked = false,
+    this.longestStreakDays = 0,
+    this.recoveryCount = 0,
+    this.lastLapseAt,
+    this.cigarettesPerDay,
+    this.cigarettesPerPack,
+    this.costPerPack,
+    this.ttfcMinutesIndex,
+    this.yearsSmoking,
+    this.reductionPlanJson,
+    this.previousQuitAttempts,
+    this.previousAids = const [],
+    this.confidenceToQuit,
+    this.smokingWindows = const [],
+    this.episodesPerWeek,
+    this.episodeDurationMinutes,
+    this.pornInvolvementFlag,
+    this.distressLevel,
+    this.sleepEffectIndex,
+    this.focusEffectIndex,
+    this.relationshipEffectIndex,
+    this.previousReductionAttempts,
+    this.confidenceToReduce,
+    this.frequencyTarget,
+    this.timeOfDayPatterns = const [],
+    this.values = const [],
+    this.triggers = const [],
+    this.reasons = const [],
+    this.quitDate,
+    DateTime? createdAt,
+    this.updatedAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
-  // Computed properties
   double? get dailySmokingCost {
     if (costPerPack == null || cigarettesPerPack == null || cigarettesPerDay == null) {
       return null;

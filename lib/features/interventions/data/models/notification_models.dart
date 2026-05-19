@@ -1,9 +1,3 @@
-import 'package:isar/isar.dart';
-
-part 'notification_models.g.dart';
-
-// ─── Enums ──────────────────────────────────────────────────────────────────
-
 enum NotificationType {
   dailyCheckIn,
   encouragement,
@@ -29,13 +23,8 @@ enum NotificationType {
 }
 
 enum NotificationFrequency {
-  /// 1–2 per day
   low,
-
-  /// 3–4 per day
   medium,
-
-  /// 5–6 per day
   high;
 
   String get displayName => switch (this) {
@@ -51,101 +40,93 @@ enum NotificationFrequency {
   };
 }
 
-// ─── ScheduledNotification ──────────────────────────────────────────────────
-
-@collection
 class ScheduledNotification {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late NotificationType type;
-
-  late String title;
-  late String body;
-
-  late DateTime scheduledTime;
-
-  bool isSent = false;
+  int id;
+  String userId;
+  NotificationType type;
+  String title;
+  String body;
+  DateTime scheduledTime;
+  bool isSent;
   DateTime? sentAt;
-
-  bool wasOpened = false;
+  bool wasOpened;
   DateTime? openedAt;
-  bool wasDismissed = false;
-
-  /// JSON/query-string payload for deep-linking inside the app.
+  bool wasDismissed;
   String? payload;
-
-  /// Denormalised stats stored at scheduling time for analytics.
   int? relatedStreakDays;
   int? relatedMoneySaved;
+  DateTime createdAt;
 
-  late DateTime createdAt;
-
-  ScheduledNotification() {
-    createdAt = DateTime.now();
-  }
+  ScheduledNotification({
+    this.id = 0,
+    required this.userId,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.scheduledTime,
+    this.isSent = false,
+    this.sentAt,
+    this.wasOpened = false,
+    this.openedAt,
+    this.wasDismissed = false,
+    this.payload,
+    this.relatedStreakDays,
+    this.relatedMoneySaved,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   bool get isPending => !isSent && scheduledTime.isAfter(DateTime.now());
   bool get isOverdue => !isSent && scheduledTime.isBefore(DateTime.now());
 }
 
-// ─── NotificationPreferences ────────────────────────────────────────────────
-
-@collection
 class NotificationPreferences {
-  Id id = Isar.autoIncrement;
-
-  @Index(unique: true)
-  late String userId;
-
-  bool notificationsEnabled = true;
-
-  @Enumerated(EnumType.name)
-  NotificationFrequency frequency = NotificationFrequency.medium;
-
-  // Quiet hours
-  bool quietHoursEnabled = true;
-  int quietHoursStart = 22; // 10 PM
-  int quietHoursEnd = 8; // 8 AM
-
-  // Per-type toggles
-  bool dailyCheckInEnabled = true;
-  bool encouragementEnabled = true;
-  bool milestoneEnabled = true;
-  bool cravingTipsEnabled = true;
-  bool microChallengesEnabled = true;
-  bool progressUpdatesEnabled = true;
-  bool streakRemindersEnabled = true;
-  bool healthFactsEnabled = true;
-  bool motivationalQuotesEnabled = true;
-
-  /// Hours-of-day the user prefers to receive messages (0–23).
-  List<int> preferredHours = const [9, 12, 15, 18, 20];
-
-  // ── Permission tracking ─────────────────────────────────────────────────
-
-  /// When the user last explicitly denied notification permission.
-  /// Used to avoid re-prompting too soon (7-day cooldown).
+  int id;
+  String userId;
+  bool notificationsEnabled;
+  NotificationFrequency frequency;
+  bool quietHoursEnabled;
+  int quietHoursStart;
+  int quietHoursEnd;
+  bool dailyCheckInEnabled;
+  bool encouragementEnabled;
+  bool milestoneEnabled;
+  bool cravingTipsEnabled;
+  bool microChallengesEnabled;
+  bool progressUpdatesEnabled;
+  bool streakRemindersEnabled;
+  bool healthFactsEnabled;
+  bool motivationalQuotesEnabled;
+  List<int> preferredHours;
   DateTime? permissionDeniedAt;
-
-  // ── Mode-specific scheduling ────────────────────────────────────────────
-
-  /// The user's current goal mode, set during onboarding completion.
-  /// Used by the adaptive engine to select mode-specific templates.
-  String? userMode; // GoalType.name
-
-  /// Whether to schedule quit-date preparation notifications (smoking mode).
-  bool quitDatePrepEnabled = true;
-
-  late DateTime createdAt;
+  String? userMode;
+  bool quitDatePrepEnabled;
+  DateTime createdAt;
   DateTime? updatedAt;
 
-  NotificationPreferences() {
-    createdAt = DateTime.now();
-  }
+  NotificationPreferences({
+    this.id = 0,
+    required this.userId,
+    this.notificationsEnabled = true,
+    this.frequency = NotificationFrequency.medium,
+    this.quietHoursEnabled = true,
+    this.quietHoursStart = 22,
+    this.quietHoursEnd = 8,
+    this.dailyCheckInEnabled = true,
+    this.encouragementEnabled = true,
+    this.milestoneEnabled = true,
+    this.cravingTipsEnabled = true,
+    this.microChallengesEnabled = true,
+    this.progressUpdatesEnabled = true,
+    this.streakRemindersEnabled = true,
+    this.healthFactsEnabled = true,
+    this.motivationalQuotesEnabled = true,
+    this.preferredHours = const [9, 12, 15, 18, 20],
+    this.permissionDeniedAt,
+    this.userMode,
+    this.quitDatePrepEnabled = true,
+    DateTime? createdAt,
+    this.updatedAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   bool isTypeEnabled(NotificationType type) => switch (type) {
     NotificationType.dailyCheckIn => dailyCheckInEnabled,
@@ -159,52 +140,48 @@ class NotificationPreferences {
     NotificationType.motivationalQuote => motivationalQuotesEnabled,
   };
 
-  /// Returns true when [time] falls inside the user's quiet-hours window.
   bool isInQuietHours(DateTime time) {
     if (!quietHoursEnabled) return false;
     final h = time.hour;
     if (quietHoursStart == quietHoursEnd) return false;
     return quietHoursStart < quietHoursEnd
-    // same-day range e.g. 09:00–17:00
         ? h >= quietHoursStart && h < quietHoursEnd
-    // overnight range e.g. 22:00–08:00
         : h >= quietHoursStart || h < quietHoursEnd;
   }
 }
 
-// ─── NotificationHistory ────────────────────────────────────────────────────
-
-@collection
 class NotificationHistory {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Enumerated(EnumType.name)
-  late NotificationType type;
-
-  late String title;
-  late String body;
-
-  late DateTime sentAt;
-  bool wasOpened = false;
+  int id;
+  String userId;
+  NotificationType type;
+  String title;
+  String body;
+  DateTime sentAt;
+  bool wasOpened;
   DateTime? openedAt;
 
-  NotificationHistory();
+  NotificationHistory({
+    this.id = 0,
+    required this.userId,
+    required this.type,
+    required this.title,
+    required this.body,
+    DateTime? sentAt,
+    this.wasOpened = false,
+    this.openedAt,
+  }) : sentAt = sentAt ?? DateTime.now();
 
   factory NotificationHistory.fromScheduled(ScheduledNotification n) =>
-      NotificationHistory()
-        ..userId = n.userId
-        ..type = n.type
-        ..title = n.title
-        ..body = n.body
-        ..sentAt = n.sentAt ?? DateTime.now()
-        ..wasOpened = n.wasOpened
-        ..openedAt = n.openedAt;
+      NotificationHistory(
+        userId: n.userId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        sentAt: n.sentAt ?? DateTime.now(),
+        wasOpened: n.wasOpened,
+        openedAt: n.openedAt,
+      );
 }
-
-// ─── Value objects (not persisted) ──────────────────────────────────────────
 
 class NotificationTemplate {
   final NotificationType type;
@@ -236,8 +213,6 @@ class MicroChallenge {
   final String title;
   final String description;
   final int durationMinutes;
-
-  /// 'breathing' | 'grounding' | 'physical' | 'mindful'
   final String actionType;
 
   const MicroChallenge({

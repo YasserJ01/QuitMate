@@ -1,37 +1,44 @@
-import 'package:isar/isar.dart';
+import 'package:drift/drift.dart';
+import '../../../../core/services/database/app_database.dart';
 
-import '../../../../core/services/database/isar_service.dart';
-import '../models/toolkit_exercise_model.dart';
-
-/// Seeds the [ToolkitExerciseModel] collection on first run.
-///
-/// The catalogue is a static Dart constant — no network, no API.
-/// Subsequent runs only add exercises that don't exist yet, making
-/// schema additions migration-free.
 class ToolkitSeedService {
-  Future<void> seedIfNeeded() async {
-    final isar = await IsarService.instance;
-    final count = await isar.toolkitExerciseModels.count();
-    if (count >= _catalogue.length) return;
+  final AppDatabase db;
 
-    await isar.writeTxn(() async {
+  ToolkitSeedService(this.db);
+
+  Future<void> seedIfNeeded() async {
+    final rows = await db.select(db.toolkitExercises).get();
+    if (rows.length >= _catalogue.length) return;
+
+    final existingIds = rows.map((r) => r.exerciseId).toSet();
+
+    await db.transaction(() async {
       for (final entry in _catalogue) {
-        final existing = await isar.toolkitExerciseModels
-            .filter()
-            .exerciseIdEqualTo(entry.exerciseId)
-            .findFirst();
-        if (existing == null) {
-          await isar.toolkitExerciseModels.put(entry);
+        if (!existingIds.contains(entry.exerciseId)) {
+          await db.into(db.toolkitExercises).insert(
+                ToolkitExercisesCompanion(
+                  exerciseId: Value(entry.exerciseId),
+                  name: Value(entry.name),
+                  category: Value(entry.category),
+                  isFavorite: Value(entry.isFavorite),
+                  lastUsedAt: Value(entry.lastUsedAt),
+                  durationEstimateSeconds: Value(entry.durationEstimateSeconds),
+                  isSharedBothModes: Value(entry.isSharedBothModes),
+                  modeFilter: Value(entry.modeFilter),
+                  shortDescription: Value(entry.shortDescription),
+                  fullInstructions: Value(entry.fullInstructions),
+                  modeSpecificNote: Value(entry.modeSpecificNote),
+                  seededAt: Value(entry.seededAt),
+                ),
+                mode: InsertMode.insertOrIgnore,
+              );
         }
       }
     });
   }
 
-  // ── Full 16-exercise catalogue ──────────────────────────────────────────
-
-  static final _catalogue = <ToolkitExerciseModel>[
-    // ── Breathing (4 exercises, all shared) ───────────────────────────────
-    _make(
+  static final _catalogue = <_SeedEntry>[
+    _SeedEntry(
       id: 'breathing-box',
       name: 'Box Breathing',
       category: 'breathing',
@@ -43,7 +50,7 @@ class ToolkitSeedService {
           'Repeat for the selected duration. This pattern calms your '
           'nervous system and improves focus.',
     ),
-    _make(
+    _SeedEntry(
       id: 'breathing-relaxing',
       name: '4-7-8 Relaxing Breath',
       category: 'breathing',
@@ -55,7 +62,7 @@ class ToolkitSeedService {
           'breath for 7 seconds. Exhale completely through your mouth '
           'for 8 seconds. This activates your parasympathetic nervous system.',
     ),
-    _make(
+    _SeedEntry(
       id: 'breathing-energizing',
       name: 'Energizing Breath',
       category: 'breathing',
@@ -66,7 +73,7 @@ class ToolkitSeedService {
           'Inhale deeply for 6 seconds, then exhale quickly for 2 seconds. '
           'This pattern increases oxygen flow and wakes up your body.',
     ),
-    _make(
+    _SeedEntry(
       id: 'breathing-calm',
       name: 'Calming Breath',
       category: 'breathing',
@@ -77,9 +84,7 @@ class ToolkitSeedService {
           'Inhale for 4 seconds, then exhale slowly for 6 seconds. '
           'The extended exhale triggers your relaxation response.',
     ),
-
-    // ── Grounding (3 exercises, all shared) ───────────────────────────────
-    _make(
+    _SeedEntry(
       id: 'grounding-fivesenses',
       name: '5-4-3-2-1 Grounding',
       category: 'grounding',
@@ -91,7 +96,7 @@ class ToolkitSeedService {
           'TOUCH. Then 3 things you can HEAR. Then 2 things you can SMELL. '
           'Finally, 1 thing you can TASTE. This interrupts anxious thoughts.',
     ),
-    _make(
+    _SeedEntry(
       id: 'grounding-bodyscan',
       name: 'Body Scan',
       category: 'grounding',
@@ -104,7 +109,7 @@ class ToolkitSeedService {
           'through your legs, torso, arms, neck, and head. Breathe into '
           'any areas of tension.',
     ),
-    _make(
+    _SeedEntry(
       id: 'grounding-objectfocus',
       name: 'Object Focus',
       category: 'grounding',
@@ -116,15 +121,15 @@ class ToolkitSeedService {
           'temperature, and shape. Notice details you have never seen before. '
           'This redirects your mind away from the craving.',
     ),
-
-    // ── Urge Surfing (2 mode-specific entries) ────────────────────────────
-    _makeMode(
+    _SeedEntry(
       id: 'urge-surfing-smoking',
       name: 'Urge Surfing',
       category: 'urgeSurfing',
       duration: 300,
+      shared: false,
       modeFilter: 'quitSmoking',
-      shortDesc: 'Ride the nicotine craving wave. Peak passes in 3-5 minutes.',
+      shortDesc:
+          'Ride the nicotine craving wave. Peak passes in 3-5 minutes.',
       fullInstr:
           'Nicotine cravings peak within 3–5 minutes. '
           'Set a timer. Notice where you feel the urge in your body. '
@@ -134,11 +139,12 @@ class ToolkitSeedService {
           'Nicotine cravings typically peak within 3–5 minutes. '
           'You do not need to fight it — just observe it.',
     ),
-    _makeMode(
+    _SeedEntry(
       id: 'urge-surfing-reduction',
       name: 'Urge Surfing',
       category: 'urgeSurfing',
       duration: 300,
+      shared: false,
       modeFilter: 'reduceMasturbation',
       shortDesc: 'Urges are waves. They rise, peak, and fall.',
       fullInstr:
@@ -150,15 +156,15 @@ class ToolkitSeedService {
           'Urges follow the same wave pattern. '
           'They rise, peak, and fall. You are not the urge.',
     ),
-
-    // ── Delay & Distract (2 mode-specific entries) ──────────────────────
-    _makeMode(
+    _SeedEntry(
       id: 'delay-distract-smoking',
       name: 'Delay & Distract',
       category: 'delayAndDistract',
       duration: 300,
+      shared: false,
       modeFilter: 'quitSmoking',
-      shortDesc: 'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
+      shortDesc:
+          'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
       fullInstr:
           'Set a timer for 5–10 minutes. Choose a distraction activity: '
           'drink water, chew gum, do push-ups, call a friend, or step outside. '
@@ -167,13 +173,15 @@ class ToolkitSeedService {
           'Try oral substitutes: sugar-free gum, carrot sticks, or a toothpick. '
           'Keep your hands busy.',
     ),
-    _makeMode(
+    _SeedEntry(
       id: 'delay-distract-reduction',
       name: 'Delay & Distract',
       category: 'delayAndDistract',
       duration: 300,
+      shared: false,
       modeFilter: 'reduceMasturbation',
-      shortDesc: 'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
+      shortDesc:
+          'Tell yourself to wait 10 minutes. Cravings rarely survive that.',
       fullInstr:
           'Set a timer for 5–10 minutes. Choose a distraction activity: '
           'drink water, do push-ups, call a friend, or step outside. '
@@ -182,9 +190,7 @@ class ToolkitSeedService {
           'Try physical activity: 10 push-ups, a brisk walk, or stretching. '
           'Physical exertion can short-circuit an urge.',
     ),
-
-    // ── Cognitive Reframing (3 exercises) ─────────────────────────────────
-    _make(
+    _SeedEntry(
       id: 'cognitive-thoughtchallenge',
       name: 'Thought Challenge',
       category: 'cognitiveReframing',
@@ -196,7 +202,7 @@ class ToolkitSeedService {
           'What is the evidence for and against it? What would you tell a '
           'friend who had this thought? Create a more balanced perspective.',
     ),
-    _make(
+    _SeedEntry(
       id: 'cognitive-consequence',
       name: 'Play the Tape Forward',
       category: 'cognitiveReframing',
@@ -208,7 +214,7 @@ class ToolkitSeedService {
           'In 1 hour? Tomorrow? Now imagine resisting. How do you feel '
           'in 5 minutes? In 1 hour? Tomorrow? Compare the two paths.',
     ),
-    _make(
+    _SeedEntry(
       id: 'cognitive-alternative',
       name: 'Alternative Actions',
       category: 'cognitiveReframing',
@@ -220,9 +226,7 @@ class ToolkitSeedService {
           'Pick one and do it immediately. The key is to replace the '
           'habit loop with a positive alternative.',
     ),
-
-    // ── Journaling (1 exercise, shared) ───────────────────────────────────
-    _make(
+    _SeedEntry(
       id: 'journaling',
       name: 'Journaling',
       category: 'journaling',
@@ -234,9 +238,7 @@ class ToolkitSeedService {
           'How are you feeling? What triggered the craving? What would '
           'help right now? There are no rules — just let the words flow.',
     ),
-
-    // ── Relapse Recovery Planning (1 exercise, shared) ────────────────────
-    _make(
+    _SeedEntry(
       id: 'relapse-recovery-plan',
       name: 'Recovery Plan Exercise',
       category: 'relapseRecoveryPlanning',
@@ -249,9 +251,7 @@ class ToolkitSeedService {
           'Who can you reach out to? What will you do differently next time? '
           'Set a new intention and move forward with self-compassion.',
     ),
-
-    // ── Cold Water Reset (1 exercise, shared) ─────────────────────────────
-    _make(
+    _SeedEntry(
       id: 'grounding-coldwater',
       name: 'Cold Water Reset',
       category: 'grounding',
@@ -264,9 +264,7 @@ class ToolkitSeedService {
           'heart rate and calms your nervous system. Evidence-based and '
           'effective within seconds.',
     ),
-
-    // ── Counting (1 exercise, shared) ────────────────────────────────────
-    _make(
+    _SeedEntry(
       id: 'grounding-counting',
       name: 'Counting (Backwards by 7)',
       category: 'grounding',
@@ -279,58 +277,38 @@ class ToolkitSeedService {
           'from cravings. Choose easy (107), medium (500), or hard (1000).',
     ),
   ];
+}
 
-  // ── Factory helpers ──────────────────────────────────────────────────────
+class _SeedEntry {
+  final String id;
+  final String name;
+  final String category;
+  final int duration;
+  final bool shared;
+  final String? modeFilter;
+  final String shortDesc;
+  final String fullInstr;
+  final String? modeNote;
 
-  static ToolkitExerciseModel _make({
-    required String id,
-    required String name,
-    required String category,
-    required int duration,
-    required bool shared,
-    required String shortDesc,
-    required String fullInstr,
-  }) {
-    final model = ToolkitExerciseModel()
-      ..exerciseId = id
-      ..name = name
-      ..category = category
-      ..isFavorite = false
-      ..lastUsedAt = null
-      ..durationEstimateSeconds = duration
-      ..isSharedBothModes = shared
-      ..modeFilter = null
-      ..shortDescription = shortDesc
-      ..fullInstructions = fullInstr
-      ..modeSpecificNote = null
-      ..seededAt = DateTime.now().toUtc();
+  _SeedEntry({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.duration,
+    required this.shared,
+    this.modeFilter,
+    required this.shortDesc,
+    required this.fullInstr,
+    this.modeNote,
+  });
 
-    return model;
-  }
-
-  /// Creates a mode-specific exercise entry with a non-null [modeFilter].
-  static ToolkitExerciseModel _makeMode({
-    required String id,
-    required String name,
-    required String category,
-    required int duration,
-    required String modeFilter,
-    required String shortDesc,
-    required String fullInstr,
-    String? modeNote,
-  }) {
-    return ToolkitExerciseModel()
-      ..exerciseId = id
-      ..name = name
-      ..category = category
-      ..isFavorite = false
-      ..lastUsedAt = null
-      ..durationEstimateSeconds = duration
-      ..isSharedBothModes = false
-      ..modeFilter = modeFilter
-      ..shortDescription = shortDesc
-      ..fullInstructions = fullInstr
-      ..modeSpecificNote = modeNote
-      ..seededAt = DateTime.now().toUtc();
-  }
+  String get exerciseId => id;
+  bool get isFavorite => false;
+  int get durationEstimateSeconds => duration;
+  bool get isSharedBothModes => shared;
+  String get shortDescription => shortDesc;
+  String get fullInstructions => fullInstr;
+  String? get modeSpecificNote => modeNote;
+  DateTime? get lastUsedAt => null;
+  DateTime get seededAt => DateTime.now();
 }

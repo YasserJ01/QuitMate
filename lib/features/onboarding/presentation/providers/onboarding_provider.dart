@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/goal_type.dart';
@@ -416,38 +417,36 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       state = state.copyWith(isLoading: true, error: null);
 
       // Create profile
-      final profile = UserProfile()
-        ..userId = state.userId
-        ..nickname = state.nickname
-        ..goalType = state.goalType!
-        ..modeLocked = true
-        // Smoking profile
-        ..cigarettesPerDay = state.cigarettesPerDay
-        ..costPerPack = state.costPerPack
-        ..cigarettesPerPack = state.cigarettesPerPack
-        ..ttfcMinutesIndex = state.ttfcMinutesIndex
-        ..yearsSmoking = state.yearsSmoking
-        ..smokingWindows = state.smokingWindows
-        ..previousQuitAttempts = state.previousQuitAttempts
-        ..previousAids = state.previousAids
-        ..confidenceToQuit = state.confidenceToQuit
-        ..reductionPlanJson = state.isGradualReduction ? state.reductionPlanJson : null
-        // Reduction profile
-        ..episodesPerWeek = state.episodesPerWeek
-        ..episodeDurationMinutes = state.episodeDurationMinutes
-        ..pornInvolvementFlag = state.pornInvolvementFlag
-        ..distressLevel = state.distressLevel
-        ..sleepEffectIndex = state.sleepEffectIndex
-        ..focusEffectIndex = state.focusEffectIndex
-        ..relationshipEffectIndex = state.relationshipEffectIndex
-        ..previousReductionAttempts = state.previousReductionAttempts
-        ..confidenceToReduce = state.confidenceToReduce
-        ..frequencyTarget = state.isAbstinenceGoal ? null : state.frequencyTarget
-        ..timeOfDayPatterns = state.timeOfDayPatterns
-        ..values = state.values
-        // Shared
-        ..triggers = state.triggers
-        ..quitDate = state.quitDate?.toUtc();
+      final profile = UserProfile(
+        userId: state.userId,
+        goalType: state.goalType!,
+        nickname: state.nickname,
+        modeLocked: true,
+        cigarettesPerDay: state.cigarettesPerDay,
+        costPerPack: state.costPerPack,
+        cigarettesPerPack: state.cigarettesPerPack,
+        ttfcMinutesIndex: state.ttfcMinutesIndex,
+        yearsSmoking: state.yearsSmoking,
+        smokingWindows: state.smokingWindows,
+        previousQuitAttempts: state.previousQuitAttempts,
+        previousAids: state.previousAids,
+        confidenceToQuit: state.confidenceToQuit,
+        reductionPlanJson: state.isGradualReduction ? state.reductionPlanJson : null,
+        episodesPerWeek: state.episodesPerWeek,
+        episodeDurationMinutes: state.episodeDurationMinutes,
+        pornInvolvementFlag: state.pornInvolvementFlag,
+        distressLevel: state.distressLevel,
+        sleepEffectIndex: state.sleepEffectIndex,
+        focusEffectIndex: state.focusEffectIndex,
+        relationshipEffectIndex: state.relationshipEffectIndex,
+        previousReductionAttempts: state.previousReductionAttempts,
+        confidenceToReduce: state.confidenceToReduce,
+        frequencyTarget: state.isAbstinenceGoal ? null : state.frequencyTarget,
+        timeOfDayPatterns: state.timeOfDayPatterns,
+        values: state.values,
+        triggers: state.triggers,
+        quitDate: state.quitDate?.toUtc(),
+      );
 
       // Save to database
       await _profileRepository.saveProfile(profile);
@@ -488,7 +487,8 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
 // Providers
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return ProfileRepository();
+  final db = ref.watch(databaseProvider);
+  return ProfileRepository(db);
 });
 
 final secureStorageProvider = Provider<SecureStorageService>((ref) {

@@ -1,23 +1,29 @@
-import 'package:isar/isar.dart';
-
-part 'achievement_model.g.dart';
-
-@collection
 class AchievementModel {
-  Id id = Isar.autoIncrement;
+  int id;
+  String userId;
+  String achievementId;
+  String name;
+  String description;
+  String iconEmoji;
+  String category;
+  String? modeFilter;
+  int progressValue;
+  int progressMax;
+  bool isUnlocked;
+  DateTime? unlockedAt;
 
-  @Index(composite: [CompositeIndex('achievementId')], unique: true)
-  late String userId; // owner of this achievement record
-
-  late String achievementId; // stable string ID from achievement catalogue
-
-  late String name;
-  late String description;
-  late String iconEmoji;
-  late String category; // AchievementCategory.name
-  String? modeFilter; // GoalType.name or null (null = shared)
-  late int progressValue;
-  late int progressMax;
-  late bool isUnlocked;
-  DateTime? unlockedAt; // UTC
+  AchievementModel({
+    this.id = 0,
+    required this.userId,
+    required this.achievementId,
+    required this.name,
+    required this.description,
+    required this.iconEmoji,
+    required this.category,
+    this.modeFilter,
+    required this.progressValue,
+    required this.progressMax,
+    required this.isUnlocked,
+    this.unlockedAt,
+  });
 }

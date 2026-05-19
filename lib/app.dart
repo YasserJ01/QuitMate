@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
 
 import 'core/theme/app_theme.dart';
-import 'core/services/database/isar_service.dart';
+import 'core/services/database/database_provider.dart';
 import 'core/services/storage/secure_storage_service.dart';
 import 'features/achievements/data/datasources/achievement_seed_service.dart';
 import 'features/achievements/data/repositories/achievement_repository_impl.dart';
@@ -12,7 +11,6 @@ import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/settings/presentation/screens/lock_screen.dart';
 import 'features/interventions/presentation/providers/notification_provider.dart';
 import 'features/interventions/services/push_notification_service.dart';
-import 'features/onboarding/data/models/user_profile.dart';
 import 'features/onboarding/presentation/screens/welcome_screen.dart';
 import 'features/tracking/presentation/screens/dashboard_screen.dart';
 import 'features/craving_toolkit/presentation/screens/craving_toolkit_screen.dart';
@@ -84,17 +82,15 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
       final userId = await _secureStorage.getUserId();
       if (userId == null) return;
 
-      final isar = await IsarService.instance;
-      final profile = await isar.userProfiles
-          .filter()
-          .userIdEqualTo(userId)
-          .findFirst();
-      if (profile == null) return;
+      final db = ref.read(databaseProvider);
+      final profileRow = await (db.select(db.userProfiles)
+          ..where((t) => t.userId.equals(userId))).getSingleOrNull();
+      if (profileRow == null) return;
 
-      final mode = profile.goalType.name;
+      final mode = profileRow.goalType;
 
       await AchievementSeedService(
-        AchievementRepositoryImpl(),
+        AchievementRepositoryImpl(db),
       ).seedIfNeeded(userId: userId, mode: mode);
     } catch (e) {
       // Non-fatal — the app works without achievements

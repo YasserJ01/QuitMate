@@ -1,39 +1,27 @@
-import 'package:isar/isar.dart';
-
-part 'toolkit_session_model.g.dart';
-
-/// Append-only record of a single toolkit exercise session.
-///
-/// Written on exercise start, updated on completion/abandon.
-/// Feeds the weekly summary and toolkit history.
-@collection
 class ToolkitSessionModel {
-  Id id = Isar.autoIncrement;
-
-  @Index()
-  late String userId;
-
-  @Index()
-  late String exerciseId;
-
-  /// Denormalised for export/display without a join.
-  late String exerciseName;
-  late String exerciseCategory;
-
-  @Index()
-  late DateTime startedAt; // UTC
-
-  /// null = abandoned before completion.
+  int id;
+  String userId;
+  String exerciseId;
+  String exerciseName;
+  String exerciseCategory;
+  DateTime startedAt;
   DateTime? completedAt;
+  int? feedbackRating;
+  String mode;
+  String? linkedJournalEntryId;
+
+  ToolkitSessionModel({
+    this.id = 0,
+    required this.userId,
+    required this.exerciseId,
+    required this.exerciseName,
+    required this.exerciseCategory,
+    DateTime? startedAt,
+    this.completedAt,
+    this.feedbackRating,
+    required this.mode,
+    this.linkedJournalEntryId,
+  }) : startedAt = startedAt ?? DateTime.now();
 
   bool get wasCompleted => completedAt != null;
-
-  /// 0 = helped, 1 = somewhat, 2 = notReally, null = no feedback given.
-  int? feedbackRating;
-
-  /// [GoalType.name] at the time the session was started.
-  late String mode;
-
-  /// Optional link to a [JournalEntryModel] created from this session.
-  String? linkedJournalEntryId;
 }
