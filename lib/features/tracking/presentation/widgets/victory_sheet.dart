@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/dashboard_theme.dart';
 import '../../../relapse_prevention/data/models/relapse_models.dart';
-import '../../../relapse_prevention/data/repositories/relapse_repository.dart';
 import '../../../relapse_prevention/presentation/providers/relapse_provider.dart';
 import '../../../tracking/data/repositories/coping_repository.dart';
 import '../../../tracking/presentation/providers/coping_provider.dart';

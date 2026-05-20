@@ -42,6 +42,7 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
     if (hasCompleted) {
       await _initNotifications();
       await _seedAchievements();
+      await _processPendingNotificationTap();
     }
 
     if (mounted) {
@@ -95,6 +96,17 @@ class _QuitMateAppState extends ConsumerState<QuitMateApp> {
     } catch (e) {
       // Non-fatal — the app works without achievements
       debugPrint('Achievement seed error: $e');
+    }
+  }
+
+  Future<void> _processPendingNotificationTap() async {
+    try {
+      final payload = await PushNotificationService().consumePendingTapPayload();
+      if (payload != null && mounted) {
+        _handleNotificationTap(payload);
+      }
+    } catch (e) {
+      debugPrint('Pending tap payload error: $e');
     }
   }
 
