@@ -9,6 +9,7 @@ import '../widgets/object_focus_exercise.dart';
 import '../widgets/counting_exercise.dart';
 import '../widgets/cold_water_exercise.dart';
 import '../widgets/effectiveness_rating_dialog.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 class GroundingExerciseScreen extends ConsumerStatefulWidget {
   final GroundingExercise exercise;
@@ -29,9 +30,35 @@ class _GroundingExerciseScreenState
     extends ConsumerState<GroundingExerciseScreen> {
   bool _hasStarted = false;
 
+  /// Stable id used for the unified session, matching the seed catalogue.
+  String get _exerciseId => switch (widget.exercise) {
+        GroundingExercise.fiveSenses => 'grounding-fivesenses',
+        GroundingExercise.bodyAwareness => 'grounding-bodyscan',
+        GroundingExercise.objectFocus => 'grounding-objectfocus',
+        GroundingExercise.counting => 'grounding-counting',
+        GroundingExercise.coldWater => 'grounding-coldwater',
+      };
+
+  /// Opens a unified toolkit session so grounding appears in History/stats
+  /// alongside every other exercise type.
+  void _startUnifiedSession() {
+    final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+    if (userId.isEmpty) return;
+    ref.read(toolkitSessionProvider.notifier).startSessionById(
+          exerciseId: _exerciseId,
+          exerciseName: widget.exercise.displayName,
+          exerciseCategory: 'grounding',
+          userId: userId,
+          mode: ref.read(currentModeProvider).valueOrNull ?? 'quitSmoking',
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(groundingSessionProvider(widget.exercise));
+    // Keep the unified session notifier alive for this screen's lifetime
+    // (it is autoDispose) so the session survives until we end + rate it.
+    ref.watch(toolkitSessionProvider);
     ref.listen<GroundingSessionState>(
       groundingSessionProvider(widget.exercise),
       (previous, next) {
@@ -158,6 +185,7 @@ class _GroundingExerciseScreenState
               await ref
                   .read(groundingSessionProvider(widget.exercise).notifier)
                   .start();
+              _startUnifiedSession();
               setState(() {
                 _hasStarted = true;
               });
@@ -358,22 +386,12 @@ class _GroundingExerciseScreenState
           ),
           const SizedBox(height: 48),
 
-          // Action buttons
+          // Action button — rating was already collected on completion, so
+          // this just returns to the toolkit (no duplicate rating dialog).
           ElevatedButton(
-            onPressed: () => _showEffectivenessRating(),
+            onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.warningColor,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-            ),
-            child: const Text(
-              'Rate Effectiveness',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 18),
             ),
             child: const Text(
@@ -436,12 +454,21 @@ class _GroundingExerciseScreenState
     // Use rating or default to 3 if skipped
     final effectivenessRating = rating ?? 3;
 
+    // Persist to the legacy grounding table (rich detail) ...
     await ref
         .read(groundingSessionProvider(widget.exercise).notifier)
         .complete(effectivenessRating);
 
-    // Completion screen renders automatically via state.isCompleted
-    // No Navigator.pop here — user taps "Return to Toolkit" to leave
+    // ... and to the unified session table (drives History + stats).
+    await ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+          completed: true,
+          rating: effectivenessRating,
+        );
+
+    ref.invalidate(toolkitStatisticsProvider);
+
+    // Completion screen renders automatically via state.isCompleted.
+    // No Navigator.pop here — user taps "Return to Toolkit" to leave.
   }
 
   Future<bool?> _showExitConfirmation() {

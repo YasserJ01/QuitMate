@@ -24,6 +24,10 @@ class _SmokingProfileFormScreenState
   final _costPerPackController = TextEditingController();
   final _cigarettesPerPackController = TextEditingController();
 
+  // Validation error messages for step 1 numeric fields.
+  String? _costError;
+  String? _cigPackError;
+
   static const _ttfcOptions = ['≤5 min', '6–30 min', '31–60 min', '>60 min'];
   static const _smokingWindowOptions = [
     'Morning',
@@ -47,11 +51,35 @@ class _SmokingProfileFormScreenState
   void initState() {
     super.initState();
     final state = ref.read(onboardingProvider);
+
     _costPerPackController.text =
         state.costPerPack?.toStringAsFixed(2) ?? '';
     _cigarettesPerPackController.text =
         (state.cigarettesPerPack ?? AppConstants.defaultCigarettesPerPack)
             .toString();
+
+    // Seed the slider defaults into state so the values shown to the user are
+    // actually persisted even if they never drag the slider. Without this, a
+    // user who accepts the defaults ends up with null fields and the dashboard
+    // nags them to add data they already saw. Skip still explicitly sets null.
+    // Deferred to post-frame to avoid mutating the provider during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final notifier = ref.read(onboardingProvider.notifier);
+      final s = ref.read(onboardingProvider);
+      if (s.cigarettesPerDay == null) {
+        notifier.setCigarettesPerDay(AppConstants.defaultCigarettesPerDay);
+      }
+      if (s.yearsSmoking == null) {
+        notifier.setYearsSmoking(5);
+      }
+      if (s.confidenceToQuit == null) {
+        notifier.setConfidenceToQuit(5);
+      }
+      if (s.cigarettesPerPack == null) {
+        notifier.setCigarettesPerPack(AppConstants.defaultCigarettesPerPack);
+      }
+    });
   }
 
   @override
@@ -73,15 +101,47 @@ class _SmokingProfileFormScreenState
 
   void _saveCurrentStepAndContinue() {
     final notifier = ref.read(onboardingProvider.notifier);
-    // Save text field values
     final costText = _costPerPackController.text.trim();
     final packText = _cigarettesPerPackController.text.trim();
+
+    // Validate cost per pack: if provided, must be a number > 0 (SRS FR-C-004).
+    String? costError;
     if (costText.isNotEmpty) {
-      notifier.setCostPerPack(double.tryParse(costText));
+      final cost = double.tryParse(costText);
+      if (cost == null || cost <= 0) {
+        costError = 'Enter an amount greater than 0';
+      }
+    }
+
+    // Validate cigarettes per pack: if provided, must be an integer >= 1.
+    String? cigPackError;
+    if (packText.isNotEmpty) {
+      final pack = int.tryParse(packText);
+      if (pack == null || pack < 1) {
+        cigPackError = 'Enter a whole number of 1 or more';
+      }
+    }
+
+    if (costError != null || cigPackError != null) {
+      setState(() {
+        _costError = costError;
+        _cigPackError = cigPackError;
+      });
+      return;
+    }
+
+    // Persist validated values (empty means the user skipped → leave as-is).
+    if (costText.isNotEmpty) {
+      notifier.setCostPerPack(double.parse(costText));
     }
     if (packText.isNotEmpty) {
-      notifier.setCigarettesPerPack(int.tryParse(packText));
+      notifier.setCigarettesPerPack(int.parse(packText));
     }
+
+    setState(() {
+      _costError = null;
+      _cigPackError = null;
+    });
     _goToPage(_currentPage + 1);
   }
 
@@ -102,8 +162,8 @@ class _SmokingProfileFormScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // Step indicator
-            _StepIndicator(currentStep: _currentPage, totalSteps: 3),
+            // Step indicator — 3 form pages + the quit-date screen = 4 steps.
+            _StepIndicator(currentStep: _currentPage, totalSteps: 4),
 
             // Personalization explanation (US-ON03)
             Padding(
@@ -192,9 +252,14 @@ class _SmokingProfileFormScreenState
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           hint: '10.00',
           prefixIcon: Icons.attach_money,
+          errorText: _costError,
+          onChanged: (_) {
+            if (_costError != null) setState(() => _costError = null);
+          },
           onSkip: () {
             _costPerPackController.clear();
             notifier.setCostPerPack(null);
+            setState(() => _costError = null);
           },
         ),
         const SizedBox(height: 16),
@@ -206,9 +271,14 @@ class _SmokingProfileFormScreenState
           keyboardType: TextInputType.number,
           hint: '20',
           prefixIcon: Icons.inventory,
+          errorText: _cigPackError,
+          onChanged: (_) {
+            if (_cigPackError != null) setState(() => _cigPackError = null);
+          },
           onSkip: () {
             _cigarettesPerPackController.clear();
             notifier.setCigarettesPerPack(null);
+            setState(() => _cigPackError = null);
           },
         ),
         const SizedBox(height: 32),
@@ -397,6 +467,8 @@ class _SmokingProfileFormScreenState
     required String hint,
     required IconData prefixIcon,
     required VoidCallback onSkip,
+    String? errorText,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,9 +487,11 @@ class _SmokingProfileFormScreenState
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(prefixIcon),
+            errorText: errorText,
           ),
         ),
       ],

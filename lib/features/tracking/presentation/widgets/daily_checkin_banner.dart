@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/dashboard_theme.dart';
 import '../providers/checkin_provider.dart';
 import 'daily_checkin_sheet.dart';
 
@@ -22,34 +23,84 @@ class DailyCheckinBanner extends ConsumerWidget {
       data: (checkedIn) {
         if (checkedIn) return const SizedBox.shrink();
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          color: Theme.of(context).colorScheme.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                const Text('📋', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'How are you doing today?',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+        final primary = DashboardTheme.primary(context);
+        final radius = BorderRadius.circular(DashboardTheme.cardRadius);
+
+        return Material(
+          color: Colors.transparent,
+          borderRadius: radius,
+          child: InkWell(
+            onTap: () => _showCheckinSheet(context, ref),
+            borderRadius: radius,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primary.withValues(alpha: 0.14),
+                    primary.withValues(alpha: 0.06),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: radius,
+                border: Border.all(color: primary.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('📋', style: TextStyle(fontSize: 18)),
                   ),
-                ),
-                TextButton(
-                  onPressed: () => _showCheckinSheet(context, ref),
-                  child: const Text('Check in'),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => ref
-                      .read(dismissedCheckinTodayProvider.notifier)
-                      .state = true,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Dismiss',
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'How are you doing today?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: DashboardTheme.textPrimary(context),
+                          ),
+                        ),
+                        Text(
+                          'Tap to check in',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: DashboardTheme.textSecondary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _showCheckinSheet(context, ref),
+                    style: TextButton.styleFrom(
+                      foregroundColor: primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text(
+                      'Check in',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close,
+                        size: 18, color: DashboardTheme.textSecondary(context)),
+                    onPressed: () => ref
+                        .read(dismissedCheckinTodayProvider.notifier)
+                        .state = true,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Dismiss',
+                  ),
+                ],
+              ),
             ),
           ),
         );

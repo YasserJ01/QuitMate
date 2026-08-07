@@ -45,6 +45,32 @@ class _ReductionProfileFormScreenState
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Seed the slider defaults into state so the values shown to the user are
+    // actually persisted even if they never drag the slider. Deferred to
+    // post-frame to avoid mutating the provider during build. Skip still
+    // explicitly sets null.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final notifier = ref.read(onboardingProvider.notifier);
+      final s = ref.read(onboardingProvider);
+      if (s.episodesPerWeek == null) {
+        notifier.setEpisodesPerWeek(AppConstants.defaultEpisodesPerWeek);
+      }
+      if (s.episodeDurationMinutes == null) {
+        notifier.setEpisodeDurationMinutes(15);
+      }
+      if (s.distressLevel == null) {
+        notifier.setDistressLevel(5);
+      }
+      if (s.confidenceToReduce == null) {
+        notifier.setConfidenceToReduce(5);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -76,8 +102,8 @@ class _ReductionProfileFormScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // Step indicator
-            _StepIndicator(currentStep: _currentPage, totalSteps: 4),
+            // Step indicator — 4 form pages + the goal-setting screen = 5 steps.
+            _StepIndicator(currentStep: _currentPage, totalSteps: 5),
 
             // Personalization explanation (US-ON03)
             Padding(

@@ -5,6 +5,7 @@ import '../../data/models/toolkit_models.dart';
 import '../providers/toolkit_provider.dart';
 import '../widgets/cbt_effectiveness_dialog.dart';
 import '../widgets/cbt_technique_content.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 
 class CbtTechniqueScreen extends ConsumerStatefulWidget {
   final CbtTechnique technique;
@@ -24,6 +25,46 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
   final PageController _pageController = PageController();
   bool _hasStarted = false;
 
+  /// Maps the CBT technique to a unified-catalogue exercise id. Most map to
+  /// the cognitive-reframing entries; urge surfing / delay are their own
+  /// categories in the catalogue.
+  ({String id, String category}) get _unifiedExercise =>
+      switch (widget.technique) {
+        CbtTechnique.urgeSurfing => (
+            id: 'urge-surfing-smoking',
+            category: 'urgeSurfing',
+          ),
+        CbtTechnique.thoughtChallenge => (
+            id: 'cognitive-thoughtchallenge',
+            category: 'cognitiveReframing',
+          ),
+        CbtTechnique.consequenceAnalysis => (
+            id: 'cognitive-consequence',
+            category: 'cognitiveReframing',
+          ),
+        CbtTechnique.delayTactic => (
+            id: 'delay-distract-smoking',
+            category: 'delayAndDistract',
+          ),
+        CbtTechnique.alternativeBehavior => (
+            id: 'cognitive-alternative',
+            category: 'cognitiveReframing',
+          ),
+      };
+
+  void _startUnifiedSession() {
+    final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+    if (userId.isEmpty) return;
+    final mapping = _unifiedExercise;
+    ref.read(toolkitSessionProvider.notifier).startSessionById(
+          exerciseId: mapping.id,
+          exerciseName: widget.technique.displayName,
+          exerciseCategory: mapping.category,
+          userId: userId,
+          mode: ref.read(currentModeProvider).valueOrNull ?? 'quitSmoking',
+        );
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -33,6 +74,9 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(cbtSessionProvider(widget.technique));
+    // Keep the unified session notifier alive for this screen's lifetime
+    // (it is autoDispose) so the session survives until we end + rate it.
+    ref.watch(toolkitSessionProvider);
     ref.listen<CbtSessionState>(
       cbtSessionProvider(widget.technique),
       (previous, next) {
@@ -159,6 +203,7 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
               await ref
                   .read(cbtSessionProvider(widget.technique).notifier)
                   .start();
+              _startUnifiedSession();
               setState(() {
                 _hasStarted = true;
               });
@@ -443,9 +488,18 @@ class _CbtTechniqueScreenState extends ConsumerState<CbtTechniqueScreen> {
     final wasHelpful = result != null ? result['wasHelpful'] as bool : true;
     final rating = result != null ? result['rating'] as int : 3;
 
+    // Persist to the legacy CBT table (rich detail) ...
     await ref
         .read(cbtSessionProvider(widget.technique).notifier)
         .complete(wasHelpful, rating);
+
+    // ... and to the unified session table (drives History + stats).
+    await ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+          completed: true,
+          rating: rating,
+        );
+
+    ref.invalidate(toolkitStatisticsProvider);
 
     // Completion screen renders automatically via state.isCompleted
     // No Navigator.pop here — user taps "Return to Toolkit" to leave

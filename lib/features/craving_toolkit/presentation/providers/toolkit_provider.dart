@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/database/database_provider.dart';
 import '../../data/models/toolkit_models.dart';
@@ -5,6 +6,7 @@ import '../../data/repositories/toolkit_repository.dart';
 import '../../data/repositories/toolkit_repository_impl.dart';
 import '../../domain/entities/toolkit_exercise.dart';
 import '../../domain/entities/toolkit_session.dart';
+import '../../domain/entities/toolkit_statistics.dart';
 import '../../domain/repositories/i_toolkit_repository.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
 import '../../../onboarding/presentation/providers/onboarding_provider.dart';
@@ -45,11 +47,19 @@ final recentExercisesProvider =
   return repo.getRecentExercises(limit: 3);
 });
 
-// ─── Current mode (derived from user profile) ──────────────────────────────
+// ─── Current mode (derived from the saved user profile) ────────────────────
 
 final currentModeProvider = FutureProvider.autoDispose<String?>((ref) async {
-  final onboardingState = ref.watch(onboardingProvider);
-  return onboardingState.goalType?.name;
+  // Resolve the mode from the persisted profile so it is correct for returning
+  // users. The onboarding state is transient and resets to null after a
+  // restart, which previously caused everyone to fall back to 'quitSmoking'.
+  final userId = await ref.watch(currentUserIdProvider.future);
+  if (userId != null) {
+    final profile = await ref.watch(profileRepositoryProvider).getProfile(userId);
+    if (profile != null) return profile.goalType.name;
+  }
+  // Fall back to in-progress onboarding state (no profile saved yet).
+  return ref.watch(onboardingProvider).goalType?.name;
 });
 
 // ─── Active session notifier ───────────────────────────────────────────────
@@ -141,6 +151,29 @@ class ToolkitSessionNotifier extends AutoDisposeNotifier<ToolkitSessionState> {
     );
   }
 
+  /// Ends the active session and records its feedback in one step.
+  ///
+  /// Prefer this over calling [endSession] + [recordFeedback] separately:
+  /// [recordFeedback] reads [ToolkitSessionState.lastCompletedSession], which
+  /// is only populated *after* [endSession] returns, so calling them in the
+  /// wrong order silently drops the rating. This method is order-independent.
+  Future<void> endSessionWithFeedback({
+    required bool completed,
+    int? rating,
+  }) async {
+    final session = state.activeSession;
+    if (session == null) return;
+    final repo = ref.read(toolkitExerciseRepoProvider);
+    await repo.endSession(sessionId: session.id, completed: completed);
+    if (rating != null) {
+      await repo.recordFeedback(sessionId: session.id, rating: rating);
+    }
+    state = state.copyWith(
+      activeSession: null,
+      lastCompletedSession: session,
+    );
+  }
+
   Future<void> recordFeedback(int rating) async {
     final session = state.lastCompletedSession;
     if (session == null) return;
@@ -160,10 +193,10 @@ final toolkitSessionProvider =
   ToolkitSessionNotifier.new,
 );
 
-// Statistics provider
+// Statistics provider — computed from the unified ToolkitSessions table.
 final toolkitStatisticsProvider = FutureProvider.autoDispose<ToolkitStatistics>(
   (ref) async {
-    final repository = ref.watch(toolkitRepositoryProvider);
+    final repository = ref.watch(toolkitExerciseRepoProvider);
     final userId = await ref.watch(currentUserIdProvider.future);
 
     if (userId == null) return ToolkitStatistics.empty();
@@ -250,6 +283,13 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
           ),
         );
 
+  /// Monotonically increasing token identifying the currently active timer
+  /// loop. Each call to [_startTimer] captures the current value; a queued
+  /// tick whose token is stale (because pause/resume/start bumped it) bails
+  /// out. This prevents two concurrent tick loops running the countdown at
+  /// double speed after a rapid pause→resume.
+  int _timerGeneration = 0;
+
   void setDuration(int seconds) {
     state = state.copyWith(targetDuration: _alignDuration(seconds));
   }
@@ -282,21 +322,30 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
   }
 
   void pause() {
+    // Invalidate any in-flight tick so a stale loop can't keep counting.
+    _timerGeneration++;
     state = state.copyWith(isRunning: false);
   }
 
   void resume() {
+    if (state.isRunning || state.isCompleted) return;
     state = state.copyWith(isRunning: true);
     _startTimer();
   }
 
+  /// Marks the exercise complete. The screen is responsible for persisting the
+  /// session and its [effectivenessRating] via the unified session notifier.
   Future<void> complete(int effectivenessRating) async {
+    _timerGeneration++;
     state = state.copyWith(isRunning: false, isCompleted: true);
   }
 
   void _startTimer() {
+    final generation = ++_timerGeneration;
     Future.delayed(const Duration(seconds: 1), () async {
       if (!mounted) return;
+      // A newer timer (or a pause) superseded this loop — stop.
+      if (generation != _timerGeneration) return;
       if (!state.isRunning) return;
 
       final newElapsed = state.elapsedSeconds + 1;
@@ -324,8 +373,10 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
           return;
         }
 
-        // Move to next phase
+        // Move to next phase — pulse haptics on each transition (SRS §9.x:
+        // haptic feedback for breathing phase transitions).
         final nextPhaseData = _getNextPhase();
+        HapticFeedback.lightImpact();
         state = state.copyWith(
           elapsedSeconds: newElapsed,
           currentPhase: nextPhaseData['phase'],
@@ -339,7 +390,10 @@ class BreathingExerciseNotifier extends StateNotifier<BreathingExerciseState> {
         );
       }
 
-      _startTimer();
+      // Continue this same generation's loop.
+      if (generation == _timerGeneration && state.isRunning) {
+        _startTimer();
+      }
     });
   }
 

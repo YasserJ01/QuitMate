@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/dashboard_theme.dart';
 
 /// A contextual nudge card shown when profile fields are missing.
 /// Encourages users to complete optional fields by showing the feature
@@ -16,33 +16,31 @@ class ProfileNudgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: AppTheme.primaryColor.withValues(alpha:0.05),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppTheme.primaryColor.withValues(alpha:0.2),
-          width: 1,
-        ),
-      ),
+    final primary = DashboardTheme.primary(context);
+    final radius = BorderRadius.circular(DashboardTheme.cardRadius);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
+        borderRadius: radius,
+        child: Container(
           padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: primary.withValues(alpha: 0.06),
+            borderRadius: radius,
+            border: Border.all(color: primary.withValues(alpha: 0.25)),
+          ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha:0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.add_circle_outline,
-                  color: AppTheme.primaryColor,
-                  size: 24,
-                ),
+                child: Icon(Icons.add_circle_outline, color: primary, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -52,24 +50,23 @@ class ProfileNudgeCard extends StatelessWidget {
                     Text(
                       'Complete your profile',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w600,
+                            color: primary,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       message,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DashboardTheme.textSecondary(context),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: AppTheme.primaryColor,
-              ),
+              if (onTap != null)
+                Icon(Icons.chevron_right, color: primary),
             ],
           ),
         ),

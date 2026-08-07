@@ -57,6 +57,9 @@ class _CognitiveReframingScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Keep the unified session notifier alive for this screen's lifetime
+    // (it is autoDispose) so the session started in initState survives.
+    ref.watch(toolkitSessionProvider);
     return PopScope(
       canPop: _currentStep == 0,
       onPopInvokedWithResult: (didPop, result) async {
@@ -179,12 +182,7 @@ class _CognitiveReframingScreenState
         ),
       ),
       buttonLabel: 'Finish',
-      onNext: () {
-        ref
-            .read(toolkitSessionProvider.notifier)
-            .endSession(completed: true);
-        _showFeedbackSheet();
-      },
+      onNext: _showFeedbackSheet,
     );
   }
 
@@ -212,11 +210,11 @@ class _CognitiveReframingScreenState
           exerciseName: 'Cognitive Reframing',
           wasCompleted: true,
           onRatingSelected: (rating) {
-            Navigator.pop(context);
-            ref
-                .read(toolkitSessionProvider.notifier)
-                .recordFeedback(rating);
-            // Offer journal save
+            ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+                  completed: true,
+                  rating: rating,
+                );
+            // Offer journal save (persists the full worksheet).
             _offerJournalSave();
           },
         ),
@@ -225,15 +223,39 @@ class _CognitiveReframingScreenState
   }
 
   void _offerJournalSave() {
-    final content = _balancedController.text.trim();
-    if (content.isEmpty) return;
+    // Build the full worksheet so none of the user's work is lost — the
+    // original thought, the evidence they weighed, and their balanced view.
+    final thought = _thoughtController.text.trim();
+    final evidenceFor = _evidenceForController.text.trim();
+    final evidenceAgainst = _evidenceAgainstController.text.trim();
+    final balanced = _balancedController.text.trim();
+
+    if (thought.isEmpty &&
+        evidenceFor.isEmpty &&
+        evidenceAgainst.isEmpty &&
+        balanced.isEmpty) {
+      return;
+    }
+
+    final buffer = StringBuffer('Cognitive Reframing\n');
+    if (thought.isNotEmpty) buffer.write('\nThought:\n$thought\n');
+    if (evidenceFor.isNotEmpty) {
+      buffer.write('\nEvidence for:\n$evidenceFor\n');
+    }
+    if (evidenceAgainst.isNotEmpty) {
+      buffer.write('\nEvidence against:\n$evidenceAgainst\n');
+    }
+    if (balanced.isNotEmpty) {
+      buffer.write('\nBalanced perspective:\n$balanced\n');
+    }
+    final content = buffer.toString().trim();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Save to Journal?'),
         content: const Text(
-          'Would you like to save your balanced perspective to your journal?',
+          'Would you like to save this reframing worksheet to your journal?',
         ),
         actions: [
           TextButton(
@@ -244,7 +266,7 @@ class _CognitiveReframingScreenState
             onPressed: () {
               Navigator.pop(ctx);
               ref.read(journalNotifierProvider.notifier).createEntry(
-                    content: 'Balanced Perspective:\n$content',
+                    content: content,
                     sourceExerciseId: 'cognitive-thoughtchallenge',
                     sourceExerciseName: 'Cognitive Reframing',
                   );

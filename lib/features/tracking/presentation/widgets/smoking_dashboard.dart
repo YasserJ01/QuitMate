@@ -24,6 +24,8 @@ import '../widgets/next_achievement_teaser.dart';
 import '../widgets/savings_card.dart';
 import '../widgets/health_metrics_card.dart';
 import '../widgets/profile_nudge_card.dart';
+import '../widgets/greeting_header.dart';
+import '../widgets/fade_slide_in.dart';
 
 class SmokingDashboard extends ConsumerWidget {
   final UserProfile profile;
@@ -77,14 +79,21 @@ class SmokingDashboard extends ConsumerWidget {
           const DailyCheckinBanner(),
           const SizedBox(height: 16),
 
-          HeroStreakSection(
-            statistics: stats,
-            quitDate: profile.quitDate,
-            mode: GoalType.quitSmoking,
+          GreetingHeader(nickname: profile.nickname),
+          const SizedBox(height: 16),
+
+          FadeSlideIn(
+            child: HeroStreakSection(
+              statistics: stats,
+              quitDate: profile.quitDate,
+              mode: GoalType.quitSmoking,
+            ),
           ),
           const SizedBox(height: 20),
 
-          QuickStatsRow(
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 80),
+            child: QuickStatsRow(
             stats: [
               QuickStat(
                 icon: Icons.calendar_today,
@@ -113,6 +122,7 @@ class SmokingDashboard extends ConsumerWidget {
                   color: DashboardTheme.success(context),
                 ),
             ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -122,16 +132,18 @@ class SmokingDashboard extends ConsumerWidget {
           const SizedBox(height: 16),
 
           if (completeness.hasMoneySavingsData) ...[
-            SavingsCard(statistics: stats),
+            FadeSlideIn(child: SavingsCard(statistics: stats)),
             const SizedBox(height: 16),
           ] else ...[
-            ProfileNudgeCard(
-              message: 'Add your cigarette cost to see money saved',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const EditProfileScreen(
-                    section: ProfileSection.smokingCosts,
+            FadeSlideIn(
+              child: ProfileNudgeCard(
+                message: 'Add your cigarette cost to see money saved',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen(
+                      section: ProfileSection.smokingCosts,
+                    ),
                   ),
                 ),
               ),
@@ -140,16 +152,18 @@ class SmokingDashboard extends ConsumerWidget {
           ],
 
           if (completeness.hasHealthMilestoneData) ...[
-            HealthMetricsCard(statistics: stats),
+            FadeSlideIn(child: HealthMetricsCard(statistics: stats)),
             const SizedBox(height: 16),
           ] else ...[
-            ProfileNudgeCard(
-              message: 'Add cigarettes per day to see health milestones',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const EditProfileScreen(
-                    section: ProfileSection.smokingDetails,
+            FadeSlideIn(
+              child: ProfileNudgeCard(
+                message: 'Add cigarettes per day to see health milestones',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen(
+                      section: ProfileSection.smokingDetails,
+                    ),
                   ),
                 ),
               ),

@@ -33,20 +33,22 @@ class _BreathingExerciseScreenState
       ref
           .read(breathingExerciseProvider(widget.pattern).notifier)
           .setDuration(_selectedDuration);
-
-      // Start session tracking via unified session notifier
-      final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
-      if (userId.isNotEmpty) {
-        final exerciseId = _exerciseIdForPattern(widget.pattern);
-        ref.read(toolkitSessionProvider.notifier).startSessionById(
-              exerciseId: exerciseId,
-              exerciseName: widget.pattern.displayName,
-              exerciseCategory: 'breathing',
-              userId: userId,
-              mode: ref.read(currentModeProvider).valueOrNull ?? 'quitSmoking',
-            );
-      }
+      _startSession();
     });
+  }
+
+  /// Opens a new unified toolkit session for this breathing pattern.
+  void _startSession() {
+    final userId = ref.read(currentUserIdProvider).valueOrNull ?? '';
+    if (userId.isEmpty) return;
+    final exerciseId = _exerciseIdForPattern(widget.pattern);
+    ref.read(toolkitSessionProvider.notifier).startSessionById(
+          exerciseId: exerciseId,
+          exerciseName: widget.pattern.displayName,
+          exerciseCategory: 'breathing',
+          userId: userId,
+          mode: ref.read(currentModeProvider).valueOrNull ?? 'quitSmoking',
+        );
   }
 
   String _exerciseIdForPattern(BreathingPattern pattern) => switch (pattern) {
@@ -60,6 +62,11 @@ class _BreathingExerciseScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(breathingExerciseProvider(widget.pattern));
+    // Keep the unified session notifier alive for this screen's lifetime so
+    // the session started in initState survives until we end + rate it.
+    // (It is autoDispose; without a watch it would be torn down between frames
+    // and the completion/rating writes would silently no-op.)
+    ref.watch(toolkitSessionProvider);
     ref.listen<BreathingExerciseState>(
       breathingExerciseProvider(widget.pattern),
       (previous, next) {
@@ -523,6 +530,7 @@ class _BreathingExerciseScreenState
                 ref
                     .read(breathingExerciseProvider(widget.pattern).notifier)
                     .reset();
+                _startSession();
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -656,9 +664,18 @@ class _BreathingExerciseScreenState
     );
 
     final effectivenessRating = rating ?? 3;
+
+    // Persist the unified toolkit session: mark it completed and record the
+    // rating so it appears in Toolkit History and statistics.
+    final sessionNotifier = ref.read(toolkitSessionProvider.notifier);
+    await sessionNotifier.endSession(completed: true);
+    await sessionNotifier.recordFeedback(effectivenessRating);
+
     await ref
         .read(breathingExerciseProvider(widget.pattern).notifier)
         .complete(effectivenessRating);
+
+    ref.invalidate(toolkitStatisticsProvider);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

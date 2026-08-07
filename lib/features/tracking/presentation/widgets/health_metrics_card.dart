@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/dashboard_theme.dart';
 import '../../data/models/statistics.dart';
+import 'dashboard_card.dart';
 
 class HealthMetricsCard extends StatelessWidget {
   final Statistics statistics;
@@ -14,76 +15,56 @@ class HealthMetricsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hoursGained = (statistics.lifeMinutesGained / 60).floor();
     final minutesGained = (statistics.lifeMinutesGained % 60).floor();
+    final success = DashboardTheme.success(context);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.successColor.withValues(alpha:0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.favorite,
-                    color: AppTheme.successColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Health Gains',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            _buildHealthMetric(
-              context,
-              icon: '🚭',
-              title: 'Cigarettes Not Smoked',
-              value: '${statistics.cigarettesAvoided}',
-              subtitle: 'That\'s amazing progress!',
-            ),
-            const SizedBox(height: 16),
-
-            _buildHealthMetric(
-              context,
-              icon: '⏰',
-              title: 'Life Time Regained',
-              value: hoursGained > 0
-                  ? '${hoursGained}h ${minutesGained}m'
-                  : '${minutesGained}m',
-              subtitle: 'Approximately 11 minutes per cigarette',
-            ),
-            const SizedBox(height: 16),
-
-            // Health milestone
-            _buildHealthMilestone(context),
-          ],
-        ),
+    return DashboardCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DashboardCardHeader(
+            icon: Icons.favorite,
+            title: 'Health Gains',
+            accent: success,
+          ),
+          const SizedBox(height: 18),
+          _buildHealthMetric(
+            context,
+            icon: '🚭',
+            title: 'Cigarettes Not Smoked',
+            value: '${statistics.cigarettesAvoided}',
+            subtitle: 'That\'s amazing progress!',
+          ),
+          const SizedBox(height: 12),
+          _buildHealthMetric(
+            context,
+            icon: '⏰',
+            title: 'Life Time Regained',
+            value: hoursGained > 0
+                ? '${hoursGained}h ${minutesGained}m'
+                : '${minutesGained}m',
+            subtitle: 'Approximately 11 minutes per cigarette',
+          ),
+          const SizedBox(height: 12),
+          _buildHealthMilestone(context),
+        ],
       ),
     );
   }
 
   Widget _buildHealthMetric(
-      BuildContext context, {
-        required String icon,
-        required String title,
-        required String value,
-        required String subtitle,
-      }) {
+    BuildContext context, {
+    required String icon,
+    required String title,
+    required String value,
+    required String subtitle,
+  }) {
+    final success = DashboardTheme.success(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        color: success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: success.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -95,23 +76,28 @@ class HealthMetricsCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: DashboardTheme.textSecondary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppTheme.successColor,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: success,
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DashboardTheme.textSecondary(context),
                   ),
                 ),
               ],
@@ -124,25 +110,24 @@ class HealthMetricsCard extends StatelessWidget {
 
   Widget _buildHealthMilestone(BuildContext context) {
     final milestone = _getHealthMilestone(statistics.daysClean);
+    final success = DashboardTheme.success(context);
+    final primary = DashboardTheme.primary(context);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.successColor.withValues(alpha:0.1),
-            AppTheme.primaryColor.withValues(alpha:0.1),
+            success.withValues(alpha: 0.12),
+            primary.withValues(alpha: 0.12),
           ],
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.successColor.withValues(alpha:0.3),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: success.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.celebration, color: AppTheme.successColor, size: 28),
+          Icon(Icons.celebration, color: success, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -150,15 +135,18 @@ class HealthMetricsCard extends StatelessWidget {
               children: [
                 Text(
                   'Health Milestone',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: DashboardTheme.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   milestone,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DashboardTheme.textSecondary(context),
                   ),
                 ),
               ],

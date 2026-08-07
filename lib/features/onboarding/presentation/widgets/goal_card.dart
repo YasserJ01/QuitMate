@@ -18,6 +18,9 @@ class GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+
     return Card(
       elevation: isSelected ? 4 : 2,
       shape: RoundedRectangleBorder(
@@ -40,8 +43,8 @@ class GoalCard extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha:0.1)
-                      : Colors.grey.withValues(alpha:0.1),
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : onSurface.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -60,26 +63,24 @@ class GoalCard extends StatelessWidget {
                   children: [
                     Text(
                       goalType.displayName,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: isSelected
-                                ? AppTheme.primaryColor
-                                : AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: isSelected ? AppTheme.primaryColor : onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       goalType.shortDescription,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: theme.textTheme.bodyMedium,
                     ),
                     // Extended description shown on first tap
                     if (isExpanded) ...[
                       const SizedBox(height: 8),
                       Text(
                         goalType.extendedDescription,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     ],
                   ],

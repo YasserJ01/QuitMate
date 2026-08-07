@@ -41,12 +41,6 @@ class _GoalSettingScreenState extends ConsumerState<GoalSettingScreen> {
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -69,10 +63,9 @@ class _GoalSettingScreenState extends ConsumerState<GoalSettingScreen> {
     notifier.setAbstinenceGoal(_isAbstinenceGoal);
 
     if (!_isAbstinenceGoal) {
-      final target = int.tryParse(_frequencyTargetController.text);
-      if (target != null && target >= 0) {
-        notifier.setFrequencyTarget(target);
-      } else {
+      final target = int.tryParse(_frequencyTargetController.text.trim());
+      final baseline = ref.read(onboardingProvider).episodesPerWeek;
+      if (target == null || target < 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please enter a valid target frequency'),
@@ -81,6 +74,18 @@ class _GoalSettingScreenState extends ConsumerState<GoalSettingScreen> {
         );
         return;
       }
+      // A reduction target only makes sense if it's below the current baseline.
+      if (baseline != null && target >= baseline) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Your target should be below your baseline of $baseline per week'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+      notifier.setFrequencyTarget(target);
     }
 
     final success = await notifier.completeOnboarding();

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value, OrderingTerm, Expression;
 import '../../../../core/services/database/app_database.dart' as drift_db;
 import '../../domain/entities/toolkit_exercise.dart';
 import '../../domain/entities/toolkit_session.dart';
+import '../../domain/entities/toolkit_statistics.dart';
 import '../../domain/repositories/i_toolkit_repository.dart';
 
 class ToolkitRepositoryImpl implements IToolkitRepository {
@@ -189,6 +190,93 @@ class ToolkitRepositoryImpl implements IToolkitRepository {
       'exercisesUsed': exerciseNames,
       'averageFeedbackRating': avgRating,
     };
+  }
+
+  @override
+  Future<ToolkitStatistics> calculateStatistics(String userId) async {
+    final sessions = await getSessionsForUser(userId);
+
+    if (sessions.isEmpty) {
+      // Still surface cravings-resisted-with-toolkit even with no sessions.
+      final resisted = await _cravingsResistedWithToolkit(userId);
+      if (resisted == 0) return ToolkitStatistics.empty();
+      return ToolkitStatistics(
+        byCategory: const {},
+        totalSessions: 0,
+        completedSessions: 0,
+        mostEffectiveCategory: null,
+        cravingsResistedWithToolkit: resisted,
+      );
+    }
+
+    // Group sessions by their exercise category. Unknown categories are
+    // skipped defensively rather than crashing the whole stats screen.
+    final grouped = <ExerciseCategory, List<ToolkitSession>>{};
+    for (final s in sessions) {
+      final category = _categoryFromName(s.exerciseCategory);
+      if (category == null) continue;
+      grouped.putIfAbsent(category, () => []).add(s);
+    }
+
+    final byCategory = <ExerciseCategory, CategoryStat>{};
+    for (final entry in grouped.entries) {
+      final list = entry.value;
+      final completed = list.where((s) => s.wasCompleted).length;
+
+      final rated =
+          list.where((s) => s.feedbackRating != null).map((s) => s.feedbackRating!);
+      final averageRating = rated.isEmpty
+          ? 0.0
+          : rated.reduce((a, b) => a + b) / rated.length;
+
+      final usage = <String, int>{};
+      for (final s in list) {
+        usage[s.exerciseName] = (usage[s.exerciseName] ?? 0) + 1;
+      }
+
+      byCategory[entry.key] = CategoryStat(
+        category: entry.key,
+        total: list.length,
+        completed: completed,
+        averageRating: averageRating,
+        exerciseUsage: usage,
+      );
+    }
+
+    // Most effective = highest average rating among categories that have at
+    // least one rated session.
+    ExerciseCategory? mostEffective;
+    double highest = 0;
+    for (final stat in byCategory.values) {
+      if (stat.averageRating > highest) {
+        highest = stat.averageRating;
+        mostEffective = stat.category;
+      }
+    }
+
+    return ToolkitStatistics(
+      byCategory: byCategory,
+      totalSessions: sessions.length,
+      completedSessions: sessions.where((s) => s.wasCompleted).length,
+      mostEffectiveCategory: mostEffective,
+      cravingsResistedWithToolkit: await _cravingsResistedWithToolkit(userId),
+    );
+  }
+
+  Future<int> _cravingsResistedWithToolkit(String userId) async {
+    final cravingRows = await (db.select(db.cravingEntries)
+          ..where((t) => t.userId.equals(userId)))
+        .get();
+    return cravingRows
+        .where((r) => (r.copingStrategiesUsed?.isNotEmpty ?? false))
+        .length;
+  }
+
+  ExerciseCategory? _categoryFromName(String name) {
+    for (final c in ExerciseCategory.values) {
+      if (c.name == name) return c;
+    }
+    return null;
   }
 
   ToolkitExercise _toEntity(drift_db.DbToolkitExercise m) => ToolkitExercise(

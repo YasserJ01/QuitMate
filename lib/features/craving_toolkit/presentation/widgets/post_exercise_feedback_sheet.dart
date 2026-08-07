@@ -3,7 +3,10 @@ import '../../../../core/theme/app_theme.dart';
 
 /// Bottom sheet shown after every exercise completion (or early exit).
 ///
-/// Asks "Did this help?" with three rating options.
+/// Asks "Did this help?" with three rating options. Emits a 1–5 rating so the
+/// value is comparable with the star-based dialogs used elsewhere and can be
+/// averaged consistently in toolkit statistics:
+///   "Yes, it helped" → 5, "Somewhat" → 3, "Not really" → 1.
 class PostExerciseFeedbackSheet extends StatelessWidget {
   final String exerciseName;
   final bool wasCompleted;
@@ -51,7 +54,7 @@ class PostExerciseFeedbackSheet extends StatelessWidget {
             label: 'Yes, it helped',
             color: AppTheme.successColor,
             onTap: () {
-              onRatingSelected(0); // helped
+              onRatingSelected(5); // helped
               Navigator.pop(context);
             },
           ),
@@ -61,7 +64,7 @@ class PostExerciseFeedbackSheet extends StatelessWidget {
             label: 'Somewhat',
             color: AppTheme.warningColor,
             onTap: () {
-              onRatingSelected(1); // somewhat
+              onRatingSelected(3); // somewhat
               Navigator.pop(context);
             },
           ),
@@ -71,7 +74,7 @@ class PostExerciseFeedbackSheet extends StatelessWidget {
             label: 'Not really',
             color: AppTheme.errorColor,
             onTap: () {
-              onRatingSelected(2); // notReally
+              onRatingSelected(1); // notReally
               Navigator.pop(context);
             },
           ),

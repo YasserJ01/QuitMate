@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../data/models/toolkit_models.dart';
+import '../../domain/entities/toolkit_statistics.dart';
 import '../providers/toolkit_provider.dart';
 
 class ToolkitHistoryScreen extends ConsumerWidget {
@@ -12,343 +12,244 @@ class ToolkitHistoryScreen extends ConsumerWidget {
     final statsAsync = ref.watch(toolkitStatisticsProvider);
 
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Toolkit History'),
-        ),
-        body: statsAsync.when(
-            data: (stats) {
-              final totalSessions = stats.totalBreathingSessions +
-                  stats.totalCbtSessions +
-                  stats.totalGroundingSessions +
-                  stats.totalDistractionSessions;
-              final techniqueRatings = _buildTechniqueRatings(stats);
+      appBar: AppBar(title: const Text('Toolkit History')),
+      body: statsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) =>
+            Center(child: Text('Error loading history: $error')),
+        data: (stats) {
+          if (stats.isEmpty) return const _EmptyHistory();
+          return _HistoryBody(stats: stats);
+        },
+      ),
+    );
+  }
+}
 
-              if (totalSessions == 0) {
-                return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history, size: 80, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text('No history yet', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Start using toolkit techniques to see your history',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppTheme.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryBody extends StatelessWidget {
+  final ToolkitStatistics stats;
+  const _HistoryBody({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    // Categories sorted by average rating (highest first), then by usage.
+    final categories = stats.byCategory.values.toList()
+      ..sort((a, b) {
+        final byRating = b.averageRating.compareTo(a.averageRating);
+        if (byRating != 0) return byRating;
+        return b.total.compareTo(a.total);
+      });
+
+    final mostEffective = stats.mostEffectiveCategory;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Overall summary card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Overall Statistics',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                _StatRow(
+                  label: 'Total Sessions',
+                  value: '${stats.totalSessions}',
+                  icon: Icons.repeat,
+                ),
+                const SizedBox(height: 12),
+                _StatRow(
+                  label: 'Completed',
+                  value: '${stats.completedSessions}',
+                  icon: Icons.check_circle,
+                ),
+                const SizedBox(height: 12),
+                _StatRow(
+                  label: 'Most Effective',
+                  value: mostEffective?.displayName ?? 'Not enough data',
+                  icon: Icons.star,
+                ),
+                const SizedBox(height: 12),
+                _StatRow(
+                  label: 'Cravings Resisted',
+                  value: '${stats.cravingsResistedWithToolkit}',
+                  icon: Icons.shield,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Per-category breakdown
+        ...categories.map((stat) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _CategoryCard(
+                stat: stat,
+                isMostEffective: stat.category == mostEffective,
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final CategoryStat stat;
+  final bool isMostEffective;
+  const _CategoryCard({required this.stat, required this.isMostEffective});
+
+  @override
+  Widget build(BuildContext context) {
+    final topExercises = stat.exerciseUsage.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(stat.category.emoji,
+                    style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    stat.category.displayName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (isMostEffective)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.successColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                      Icon(
-                      Icons.history,
-                      size: 80,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                        'No history yet',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                        const SizedBox(height: 8),
+                        Icon(Icons.star,
+                            size: 14, color: AppTheme.successColor),
+                        SizedBox(width: 4),
                         Text(
-                          'Start using toolkit techniques to see your history',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondary,
+                          'Top',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.successColor,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
-                );
-              }
-
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Overall stats
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _StatRow(
+              label: 'Sessions',
+              value: '${stat.total}',
+              icon: Icons.repeat,
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              label: 'Completed',
+              value: '${stat.completed}/${stat.total}',
+              icon: Icons.check_circle,
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              label: 'Average Rating',
+              value: stat.averageRating > 0
+                  ? '${stat.averageRating.toStringAsFixed(1)}/5'
+                  : 'Not rated',
+              icon: Icons.star,
+            ),
+            if (topExercises.length > 1) ...[
+              const Divider(height: 24),
+              const Text(
+                'Most Used:',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              ...topExercises.take(3).map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Overall Statistics',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildStatRow(
-                            context,
-                            'Total Sessions',
-                            '$totalSessions',
-                            Icons.check_circle,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildStatRow(
-                            context,
-                            'Most Effective',
-                            stats.mostEffectiveTechnique,
-                            Icons.star,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildStatRow(
-                            context,
-                            'Cravings Resisted',
-                            '${stats.cravingsResistedWithToolkit}',
-                            Icons.shield,
-                          ),
-                          if (techniqueRatings.isNotEmpty) ...[
-                            const Divider(height: 24),
-                            const Text(
-                              'Technique Ratings (Highest to Lowest)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
+                          Expanded(
+                            child: Text(
+                              e.key,
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 8),
-                            ...techniqueRatings,
-                          ],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${e.value}x',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Breathing sessions
-                  if (stats.totalBreathingSessions > 0) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('🫁', style: TextStyle(fontSize: 24)),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Breathing Exercises',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              context,
-                              'Sessions',
-                              '${stats.totalBreathingSessions}',
-                              Icons.repeat,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildStatRow(
-                              context,
-                              'Average Rating',
-                              '${stats.averageBreathingEffectiveness.toStringAsFixed(1)}/5',
-                              Icons.star,
-                            ),
-                            if (stats.breathingPatternUsage.isNotEmpty) ...[
-                              const Divider(height: 24),
-                              const Text(
-                                'Most Used Patterns:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...(() {
-                                final entries = stats.breathingPatternUsage.entries
-                                    .toList()
-                                  ..sort((a, b) => b.value.compareTo(a.value));
-                                return entries.take(3);
-                              }())
-                                  .map((e) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${e.key.emoji} ${e.key.displayName}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    Text(
-                                      '${e.value}x',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // CBT sessions
-                  if (stats.totalCbtSessions > 0) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('🧠', style: TextStyle(fontSize: 24)),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'CBT Techniques',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              context,
-                              'Sessions',
-                              '${stats.totalCbtSessions}',
-                              Icons.repeat,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildStatRow(
-                              context,
-                              'Average Rating',
-                              '${stats.averageCbtEffectiveness.toStringAsFixed(1)}/5',
-                              Icons.star,
-                            ),
-                            if (stats.cbtTechniqueUsage.isNotEmpty) ...[
-                              const Divider(height: 24),
-                              const Text(
-                                'Most Used Techniques:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...(() {
-                                final entries = stats.cbtTechniqueUsage.entries
-                                    .toList()
-                                  ..sort((a, b) => b.value.compareTo(a.value));
-                                return entries.take(3);
-                              }())
-                                  .map((e) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${e.key.emoji} ${e.key.displayName}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    Text(
-                                      '${e.value}x',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.successColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Grounding sessions
-                  if (stats.totalGroundingSessions > 0) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('👁️', style: TextStyle(fontSize: 24)),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Grounding Exercises',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              context,
-                              'Sessions',
-                              '${stats.totalGroundingSessions}',
-                              Icons.repeat,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildStatRow(
-                              context,
-                              'Average Rating',
-                              '${stats.averageGroundingEffectiveness.toStringAsFixed(1)}/5',
-                              Icons.star,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Distraction sessions
-                  if (stats.totalDistractionSessions > 0) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('🎮', style: TextStyle(fontSize: 24)),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Distraction Activities',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              context,
-                              'Sessions',
-                              '${stats.totalDistractionSessions}',
-                              Icons.repeat,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildStatRow(
-                              context,
-                              'Average Rating',
-                              '${stats.averageDistractionEffectiveness.toStringAsFixed(1)}/5',
-                              Icons.star,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              );
-            },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(
-            child: Text('Error loading history: $error'),
-          ),
+            ],
+          ],
         ),
+      ),
     );
   }
+}
 
-  Widget _buildStatRow(
-      BuildContext context,
-      String label,
-      String value,
-      IconData icon,
-      ) {
+class _StatRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  const _StatRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Icon(icon, size: 20, color: AppTheme.primaryColor),
@@ -356,59 +257,9 @@ class ToolkitHistoryScreen extends ConsumerWidget {
         Expanded(child: Text(label)),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
       ],
     );
-  }
-
-  List<Widget> _buildTechniqueRatings(ToolkitStatistics stats) {
-    final ratings = <({String label, double rating, Color color})>[
-      (
-        label: 'Breathing',
-        rating: stats.averageBreathingEffectiveness,
-        color: AppTheme.primaryColor,
-      ),
-      (
-        label: 'CBT',
-        rating: stats.averageCbtEffectiveness,
-        color: AppTheme.successColor,
-      ),
-      (
-        label: 'Grounding',
-        rating: stats.averageGroundingEffectiveness,
-        color: AppTheme.warningColor,
-      ),
-      (
-        label: 'Distraction',
-        rating: stats.averageDistractionEffectiveness,
-        color: AppTheme.primaryColor,
-      ),
-    ]
-      ..removeWhere((entry) => entry.rating == 0);
-
-    ratings.sort((a, b) => b.rating.compareTo(a.rating));
-
-    return ratings
-        .map(
-          (entry) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                Icon(Icons.star, size: 18, color: entry.color),
-                const SizedBox(width: 10),
-                Expanded(child: Text(entry.label)),
-                Text(
-                  '${entry.rating.toStringAsFixed(1)}/5',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        )
-        .toList();
   }
 }

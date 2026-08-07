@@ -11,7 +11,6 @@ class OnboardingState {
   final String userId;
   final String? nickname;
   final GoalType? goalType;
-  final int currentStep;
   final bool isLoading;
   final String? error;
 
@@ -51,7 +50,6 @@ class OnboardingState {
     required this.userId,
     this.nickname,
     this.goalType,
-    this.currentStep = 0,
     this.isLoading = false,
     this.error,
     this.cigarettesPerDay,
@@ -86,7 +84,6 @@ class OnboardingState {
     String? userId,
     String? nickname,
     GoalType? goalType,
-    int? currentStep,
     bool? isLoading,
     String? error,
     int? cigarettesPerDay,
@@ -139,7 +136,6 @@ class OnboardingState {
       userId: userId ?? this.userId,
       nickname: nickname ?? this.nickname,
       goalType: goalType ?? this.goalType,
-      currentStep: currentStep ?? this.currentStep,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       cigarettesPerDay: clearCigarettesPerDay ? null : (cigarettesPerDay ?? this.cigarettesPerDay),
@@ -183,7 +179,8 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   // ── Basic setters ──────────────────────────────────────────────────────
 
   void setNickname(String nickname) {
-    state = state.copyWith(nickname: nickname);
+    final trimmed = nickname.trim();
+    state = state.copyWith(nickname: trimmed.isEmpty ? null : trimmed);
   }
 
   void setGoalType(GoalType goalType) {
@@ -191,7 +188,9 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   void setQuitDate(DateTime date) {
-    state = state.copyWith(quitDate: date);
+    // Normalize to a local calendar date at midnight; the picker may return a
+    // time component and downstream day/streak math is date-based.
+    state = state.copyWith(quitDate: DateTime(date.year, date.month, date.day));
   }
 
   // ── Smoking profile setters ────────────────────────────────────────────
@@ -398,28 +397,23 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(triggers: triggers);
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────
-
-  void nextStep() {
-    state = state.copyWith(currentStep: state.currentStep + 1);
-  }
-
-  void previousStep() {
-    if (state.currentStep > 0) {
-      state = state.copyWith(currentStep: state.currentStep - 1);
-    }
-  }
-
   // ── Completion ─────────────────────────────────────────────────────────
 
   Future<bool> completeOnboarding() async {
+    // Guard: goal type must be selected before a profile can be built.
+    final goalType = state.goalType;
+    if (goalType == null) {
+      state = state.copyWith(error: 'Please select a goal before finishing.');
+      return false;
+    }
+
     try {
       state = state.copyWith(isLoading: true, error: null);
 
       // Create profile
       final profile = UserProfile(
         userId: state.userId,
-        goalType: state.goalType!,
+        goalType: goalType,
         nickname: state.nickname,
         modeLocked: true,
         cigarettesPerDay: state.cigarettesPerDay,
@@ -445,7 +439,17 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         timeOfDayPatterns: state.timeOfDayPatterns,
         values: state.values,
         triggers: state.triggers,
-        quitDate: state.quitDate?.toUtc(),
+        // Store the quit date as a local calendar date at midnight. Using
+        // toUtc() here would shift the picked day backwards for users in
+        // positive-offset timezones, throwing off day/streak counts which
+        // are computed from the calendar date.
+        quitDate: state.quitDate == null
+            ? null
+            : DateTime(
+                state.quitDate!.year,
+                state.quitDate!.month,
+                state.quitDate!.day,
+              ),
       );
 
       // Save to database

@@ -45,6 +45,10 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep the unified session notifier alive for this screen's lifetime
+    // (it is autoDispose) so the session started in initState survives until
+    // we end + rate it.
+    ref.watch(toolkitSessionProvider);
     return PopScope(
       canPop: !_isRunning,
       onPopInvokedWithResult: (didPop, result) async {
@@ -258,8 +262,30 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
     _showFeedbackSheet();
   }
 
-  void _showFeedback(int rating) {
-    _showFeedbackSheet();
+  /// Records the urge outcome chosen on the completion screen. Maps the three
+  /// outcomes onto the shared 1–5 feedback scale so it aggregates with other
+  /// exercises: passed completely → 5, reduced → 3, still present → 1.
+  void _showFeedback(int outcome) {
+    final rating = switch (outcome) {
+      0 => 5, // Yes, completely
+      1 => 3, // Reduced
+      _ => 1, // Still present
+    };
+    ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+          completed: true,
+          rating: rating,
+        );
+
+    // If the urge is still present, offer a follow-up exercise.
+    if (outcome == 2 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Still tough? Try another exercise from the toolkit.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+    if (mounted) Navigator.pop(context);
   }
 
   void _showFeedbackSheet() {
@@ -276,16 +302,13 @@ class _UrgeSurfingScreenState extends ConsumerState<UrgeSurfingScreen> {
           exerciseName: 'Urge Surfing',
           wasCompleted: _isCompleted,
           onRatingSelected: (rating) {
-            Navigator.pop(context);
-            ref
-                .read(toolkitSessionProvider.notifier)
-                .recordFeedback(rating);
-            ref
-                .read(toolkitSessionProvider.notifier)
-                .endSession(completed: _isCompleted);
+            ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+                  completed: _isCompleted,
+                  rating: rating,
+                );
 
-            // Conditional follow-up: if abandoned AND rated "not really"
-            if (!_isCompleted && rating == 2 && mounted) {
+            // Conditional follow-up: if abandoned AND rated "not really" (1)
+            if (!_isCompleted && rating == 1 && mounted) {
               Future.microtask(() {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

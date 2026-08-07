@@ -51,12 +51,6 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -79,8 +73,19 @@ class _QuitDateScreenState extends ConsumerState<QuitDateScreen> {
 
     // Save gradual reduction plan if applicable
     if (_isGradualReduction) {
-      final reducePerWeek = int.tryParse(_reducePerWeekController.text) ?? 2;
-      final overWeeks = int.tryParse(_overWeeksController.text) ?? 4;
+      final reducePerWeek = int.tryParse(_reducePerWeekController.text.trim());
+      final overWeeks = int.tryParse(_overWeeksController.text.trim());
+      if (reducePerWeek == null || reducePerWeek < 1 ||
+          overWeeks == null || overWeeks < 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Enter whole numbers of 1 or more for your reduction plan'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
       // Store as simple JSON string
       notifier.setReductionPlanJson(
         '{"reducePerWeek":$reducePerWeek,"overWeeks":$overWeeks}',

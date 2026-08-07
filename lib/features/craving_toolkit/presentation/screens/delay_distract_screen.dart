@@ -65,6 +65,9 @@ class _DelayDistractScreenState extends ConsumerState<DelayDistractScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep the unified session notifier alive for this screen's lifetime
+    // (it is autoDispose) so the session started in initState survives.
+    ref.watch(toolkitSessionProvider);
     return PopScope(
       canPop: !_isRunning,
       onPopInvokedWithResult: (didPop, result) async {
@@ -257,13 +260,10 @@ class _DelayDistractScreenState extends ConsumerState<DelayDistractScreen> {
           exerciseName: 'Delay & Distract',
           wasCompleted: _isCompleted,
           onRatingSelected: (rating) {
-            Navigator.pop(context);
-            ref
-                .read(toolkitSessionProvider.notifier)
-                .recordFeedback(rating);
-            ref
-                .read(toolkitSessionProvider.notifier)
-                .endSession(completed: _isCompleted);
+            ref.read(toolkitSessionProvider.notifier).endSessionWithFeedback(
+                  completed: _isCompleted,
+                  rating: rating,
+                );
           },
         ),
       ),

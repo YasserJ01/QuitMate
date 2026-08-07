@@ -19,6 +19,19 @@ class GoalSelectionScreen extends ConsumerStatefulWidget {
 
 class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
   GoalType? _expandedGoal;
+  final _nicknameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _nicknameController.text = ref.read(onboardingProvider).nickname ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +74,27 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
               ),
               const SizedBox(height: 24),
 
+              // Nickname (optional) — collected here so the dashboard greeting
+              // and stats can address the user by name.
+              Text(
+                'What should we call you? (optional)',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _nicknameController,
+                textCapitalization: TextCapitalization.words,
+                maxLength: AppConstants.maxNicknameLength,
+                decoration: const InputDecoration(
+                  hintText: 'Your name or nickname',
+                  prefixIcon: Icon(Icons.person_outline),
+                  counterText: '',
+                ),
+                onChanged: (value) =>
+                    ref.read(onboardingProvider.notifier).setNickname(value),
+              ),
+              const SizedBox(height: 16),
+
               // Goal Cards — exactly 2 options, no pre-selection (BR-01, US-ON01)
               Expanded(
                 child: ListView(
@@ -70,15 +104,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                       isSelected:
                           onboardingState.goalType == GoalType.quitSmoking,
                       isExpanded: _expandedGoal == GoalType.quitSmoking,
-                      onTap: () {
-                        // First tap expands description; second tap confirms
-                        if (_expandedGoal != GoalType.quitSmoking) {
-                          setState(() => _expandedGoal = GoalType.quitSmoking);
-                        }
-                        ref
-                            .read(onboardingProvider.notifier)
-                            .setGoalType(GoalType.quitSmoking);
-                      },
+                      onTap: () => _onGoalTapped(GoalType.quitSmoking),
                     ),
                     const SizedBox(height: 16),
                     GoalCard(
@@ -87,15 +113,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                           GoalType.reduceMasturbation,
                       isExpanded:
                           _expandedGoal == GoalType.reduceMasturbation,
-                      onTap: () {
-                        if (_expandedGoal != GoalType.reduceMasturbation) {
-                          setState(() =>
-                              _expandedGoal = GoalType.reduceMasturbation);
-                        }
-                        ref
-                            .read(onboardingProvider.notifier)
-                            .setGoalType(GoalType.reduceMasturbation);
-                      },
+                      onTap: () => _onGoalTapped(GoalType.reduceMasturbation),
                     ),
                   ],
                 ),
@@ -126,5 +144,11 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
         ),
       ),
     );
+  }
+
+  /// Tapping a goal both selects it and reveals its extended description.
+  void _onGoalTapped(GoalType goal) {
+    setState(() => _expandedGoal = goal);
+    ref.read(onboardingProvider.notifier).setGoalType(goal);
   }
 }

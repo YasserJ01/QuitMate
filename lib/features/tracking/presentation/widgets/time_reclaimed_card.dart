@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/dashboard_theme.dart';
 import '../../data/models/statistics.dart';
+import 'dashboard_card.dart';
 
 class TimeReclaimedCard extends StatelessWidget {
   final Statistics statistics;
@@ -19,19 +20,11 @@ class TimeReclaimedCard extends StatelessWidget {
     final mins = minutes % 60;
     final display = hours > 0 ? '${hours}h ${mins}m' : '${mins}m';
 
-    return Card(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.primaryColor.withBlue(200),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
+    return Semantics(
+      label: 'Time reclaimed: $display',
+      child: DashboardCard(
+        gradient: DashboardTheme.heroGradient(context),
+        accent: DashboardTheme.primary(context),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,44 +34,45 @@ class TimeReclaimedCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha:0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.schedule,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.schedule, color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Text(
                   'Time Reclaimed',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             Text(
               display,
               style: const TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
+                fontSize: 38,
+                fontWeight: FontWeight.w900,
                 color: Colors.white,
+                letterSpacing: -1,
+                height: 1,
               ),
             ),
-            const SizedBox(height: 8),
-            if (statistics.episodesAvoided != null && statistics.episodesAvoided! > 0)
+            if (statistics.episodesAvoided != null &&
+                statistics.episodesAvoided! > 0) ...[
+              const SizedBox(height: 10),
               Text(
                 '${statistics.episodesAvoided} episodes avoided',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha:0.9),
-                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
+            ],
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import '../../domain/entities/toolkit_exercise.dart';
 import '../../domain/entities/toolkit_session.dart';
+import '../../domain/entities/toolkit_statistics.dart';
 
 /// Abstract interface for toolkit exercise and session persistence.
 ///
@@ -46,4 +47,7 @@ abstract class IToolkitRepository {
 
   /// Returns aggregated statistics for the weekly summary.
   Future<Map<String, dynamic>> getWeeklySummary({required String userId});
+
+  /// Computes category-keyed usage statistics from the unified session table.
+  Future<ToolkitStatistics> calculateStatistics(String userId);
 }
